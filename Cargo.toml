@@ -1,0 +1,17 @@
+[package]
+name = "passgen-telegram"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A simple password generator for telegram."
+authors = ["Mamontov Konstantin <k@mamont.xyz>"]
+
+[dependencies]
+
+# Reduce the size of the executable  file:
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+panic = 'abort'
+strip = true
