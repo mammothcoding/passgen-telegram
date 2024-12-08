@@ -1,10 +1,17 @@
 [package]
 name = "passgen-telegram"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+rust-version = "1.83"
 license = "MIT"
-description = "A simple password generator for telegram."
+description = "Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences."
+readme = "README.md"
 authors = ["Mamontov Konstantin <k@mamont.xyz>"]
+homepage = "https://github.com/mammothcoding/passgen-cmd"
+repository = "https://github.com/mammothcoding/passgen-cmd"
+keywords = ["generator", "password", "token", "crypto-resistant", "telegram-bot"]
+categories = ["authentication", "cryptography"]
+exclude = [".*"]
 
 [features]
 default = ["ctrlc_handler"]
@@ -30,7 +37,8 @@ axum = { version = "0.7.0", optional = true }
 tower = { version = "0.5.0", optional = true }
 tower-http = { version = "0.6.1", features = ["trace"], optional = true }
 rand = { version = "0.8.5", optional = true }
-
+env-file-reader = "=0.3.0"
+passgen-lib = "1.0.4"
 
 # Reduce the size of the executable  file:
 [profile.release]

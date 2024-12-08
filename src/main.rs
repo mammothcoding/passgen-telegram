@@ -1,50 +1,55 @@
-use std::path;
-use std::path::PathBuf;
+use env_file_reader::read_file;
 use log::*;
-use teloxide::dispatching::{Dispatcher, HandlerExt, UpdateFilterExt};
-use teloxide::dptree::{case, endpoint};
-use teloxide::error_handlers::LoggingErrorHandler;
-use teloxide::{prelude::*, utils::command::BotCommands, update_listeners::webhooks};
+use std::{env};
+use passgenlib::Passgen;
 use teloxide::requests::Requester;
-use teloxide::{dptree, respond, Bot};
-use teloxide::payloads::SendPhoto;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, InputFile, ReplyMarkup};
+use teloxide::{Bot};
+use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 
 #[tokio::main]
 async fn main() {
-    pretty_env_logger::init();
-    log::info!("Starting command bot...");
+    // Log.
+    /*pretty_env_logger::init();
+    log::info!("Starting command bot...");*/
 
-    let bot = Bot::new("7745281341:AAFWcFzoCL0KK2HjyblVN7n1zQL4AUvHsD0");
-    //dbg!(bot.get_me().await).expect("TODO: panic message");
+    /// Get variables from ".env" file stored near binary file.
+    let binding = env::current_exe().unwrap();
+    let env_path = binding.with_file_name(".env");
+    let env_variables = read_file(env_path).expect("Could not load .env file");
+    let tg_token: &String = &env_variables["TELEGRAM_BOT_TOKEN"];
+    let tg_webhook_url = (&env_variables["TELEGRAM_WEBHOOK_URL"] as &str)
+        .parse()
+        .unwrap();
+    let socket_addr = (&env_variables["TELEGRAM_BOT_SOCKET_ADDR"] as &str)
+        .parse()
+        .unwrap();
 
-
-    let addr = ([0, 0, 0, 0], 8000).into();
-    let url = "https://tg.passgen.mamont.xyz/telegram/webhooking".parse().unwrap();
-    let listener = webhooks::axum(bot.clone(), webhooks::Options::new(addr, url))
-        .await
-        .expect("Couldn't setup webhook");
-
+    /// Setup listener.
+    //let bot = Bot::from_env();
+    let bot: Bot = Bot::new(tg_token);
+    let listener = webhooks::axum(
+        bot.clone(),
+        webhooks::Options::new(socket_addr, tg_webhook_url),
+    )
+    .await
+    .expect("Couldn't setup webhook");
 
     teloxide::repl_with_listener(
         bot,
         |bot: Bot, msg: Message| async move {
-            //let logo = "<a href=\"https://passgen.mamont.xyz/McDev_640x360.png\">logo</a>";
-            let inline_btns = ["⚙Generate password"]
-                .map(|btn| InlineKeyboardButton::callback(btn, btn));
+            let inline_btns = ["⚙SETTINGS", "GENERATE↩"].map(|btn| InlineKeyboardButton::callback(btn, btn));
             println!("{}", msg.text().clone().unwrap().to_string());
 
             bot.send_message(msg.chat.id, "<b>Menu:</b>")
                 .parse_mode("HTML".parse().unwrap())
                 .reply_markup(InlineKeyboardMarkup::new([inline_btns]))
                 .await?;
-            bot.send_message(msg.chat.id, "pwd-bla-bla").await?;
-
+            bot.send_message(msg.chat.id, Passgen::default_strong_and_usab().generate(10)).await?;
 
             Ok(())
         },
         listener,
     )
-        .await;
-
+    .await;
 }
