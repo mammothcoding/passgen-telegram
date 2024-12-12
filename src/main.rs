@@ -4,28 +4,30 @@ use passgenlib::Passgen;
 use std::env;
 use std::error::Error;
 use teloxide::requests::Requester;
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputFile, InputMessageContent, InputMessageContentText, Me, ReplyMarkup};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me,};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::SqlitePool;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
 enum Command {
     /// Choose your destiny
     Help,
-    /// Start
+    /// Main menu
     Start,
 }
 
 #[tokio::main]
-async fn main() {// -> Result<(), Box<dyn Error>> {
+async fn main() {
     // Log.
     /*pretty_env_logger::init();
     log::info!("Starting command bot...");*/
 
     // Get variables from ".env" file stored near binary file.
     let binding = env::current_exe().unwrap();
-    let env_path = binding.with_file_name(".env");
+    let env_path = &binding.with_file_name(".env");
     let env_variables = read_file(env_path).expect("Could not load .env file");
     let tg_token: &String = &env_variables["TELEGRAM_BOT_TOKEN"];
     let tg_webhook_url = (&env_variables["TELEGRAM_WEBHOOK_URL"] as &str)
@@ -34,6 +36,12 @@ async fn main() {// -> Result<(), Box<dyn Error>> {
     let socket_addr = (&env_variables["TELEGRAM_BOT_SOCKET_ADDR"] as &str)
         .parse()
         .unwrap();
+
+    //DB
+    let mut config = SqliteConnectOptions::new();
+    let db_path = &binding.with_file_name("sqlite.db");
+    config = config.filename(db_path);
+    let pool = SqlitePool::connect_with(config);
 
     // Setup listener.
     let bot: Bot = Bot::new(tg_token);
@@ -46,8 +54,7 @@ async fn main() {// -> Result<(), Box<dyn Error>> {
 
     let handler = dptree::entry()
         .branch(Update::filter_message().endpoint(message_handler))
-        .branch(Update::filter_callback_query().endpoint(callback_handler))
-        .branch(Update::filter_inline_query().endpoint(inline_query_handler));
+        .branch(Update::filter_callback_query().endpoint(callback_handler));
 
     Dispatcher::builder(bot, handler)
         .enable_ctrlc_handler()
@@ -57,30 +64,9 @@ async fn main() {// -> Result<(), Box<dyn Error>> {
             LoggingErrorHandler::with_custom_text("An error from the update listener"),
         )
         .await;
-    //Ok(())
-
-    //teloxide::repl_with_listener(bot, handler, listener).await;
-
-    /*teloxide::repl_with_listener(
-        bot,
-        |bot: Bot, msg: Message| async move {
-            let inline_btns = ["⚙SETTINGS", "GENERATE↩"].map(|btn| InlineKeyboardButton::callback(btn, btn));
-            println!("{}", msg.text().clone().unwrap().to_string());
-
-            bot.send_message(msg.chat.id, "<b>Menu:</b>")
-                .parse_mode("HTML".parse().unwrap())
-                .reply_markup(InlineKeyboardMarkup::new([inline_btns]))
-                .await?;
-            bot.send_message(msg.chat.id, Passgen::default_strong_and_usab().generate(10)).await?;
-
-            Ok(())
-        },
-        listener,
-    )
-    .await;*/
 }
 
-fn make_keyboard() -> InlineKeyboardMarkup {
+fn main_menu() -> InlineKeyboardMarkup {
     let settings_btn = InlineKeyboardButton::callback("⚙SETTINGS", "settings");
     let gen_btn = InlineKeyboardButton::callback("▶GENERATE", "generate");
     let inline_btns = [[settings_btn], [gen_btn]];
@@ -99,8 +85,8 @@ async fn message_handler(
                 bot.send_message(msg.chat.id, Command::descriptions().to_string()).await?;
             }
             Ok(Command::Start) => {
-                let keyboard = make_keyboard();
-                bot.send_message(msg.chat.id, "<b>Menu:</b>")
+                let keyboard = main_menu();
+                bot.send_message(msg.chat.id, "<b>Main menu:</b>")
                     .parse_mode("HTML".parse().unwrap())
                     .reply_markup(keyboard)
                     .await?;
@@ -113,32 +99,19 @@ async fn message_handler(
     Ok(())
 }
 
-async fn inline_query_handler(
-    bot: Bot,
-    q: InlineQuery,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let choose_debian_version = InlineQueryResultArticle::new(
-        "0",
-        "Chose debian version",
-        InputMessageContent::Text(InputMessageContentText::new("Debian versions:")),
-    )
-        .reply_markup(make_keyboard());
-
-    bot.answer_inline_query(q.id, vec![choose_debian_version.into()]).await?;
-
-    Ok(())
-}
-
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Error + Send + Sync>> {
     bot.send_message(q.message.unwrap().chat().id, Passgen::default_strong_and_usab().generate(10)).await?;
+    //bot.answer_callback_query(&q.id).text("```hop```").show_alert(true).await?;
+    //bot.send_message(q.message.clone().unwrap().chat().id, q.data.clone().unwrap()).await?;
 
-    if let Some(ref version) = q.data {
+
+    /*if let Some(ref version) = q.data {
         let text = format!("You chose: {version}");
         bot.answer_callback_query(&q.id).await?;
         if let Some(id) = q.inline_message_id {
             bot.edit_message_text_inline(id, text).await?;
         }
-    }
+    }*/
 
     /*if let Some(ref version) = q.data {
         let text = format!("You chose: {version}");
