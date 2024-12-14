@@ -3,12 +3,11 @@ use log::*;
 use passgenlib::Passgen;
 use std::env;
 use std::error::Error;
+use sqlx::{PgConnection, PgPool, Connection, Executor};
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me,};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
-use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::SqlitePool;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -26,8 +25,8 @@ async fn main() {
     log::info!("Starting command bot...");*/
 
     // Get variables from ".env" file stored near binary file.
-    let binding = env::current_exe().unwrap();
-    let env_path = &binding.with_file_name(".env");
+    let cur_exe_binding = env::current_exe().unwrap();
+    let env_path = &cur_exe_binding.with_file_name(".env");
     let env_variables = read_file(env_path).expect("Could not load .env file");
     let tg_token: &String = &env_variables["TELEGRAM_BOT_TOKEN"];
     let tg_webhook_url = (&env_variables["TELEGRAM_WEBHOOK_URL"] as &str)
@@ -38,10 +37,31 @@ async fn main() {
         .unwrap();
 
     //DB
-    let mut config = SqliteConnectOptions::new();
+    let connection_pool = PgPool::connect("postgres://postgres:postgres@192.168.0.243:5432/passgen_tg_en")
+        .await;
+        //.expect("Failed to connect to Postgres.");
+    if let Err(_err) = &connection_pool {
+        println!("🚫 Error on PgPool::connect: '{}'", _err);
+    } else {
+        println!("✅ Connect to DB.");
+
+        let pool = connection_pool.unwrap();
+        let migr_res = sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await;
+            //.expect("Failed to migrate the database");
+        if let Err(_err) = &migr_res {
+            println!("🚫 Error on migrate: '{}'", _err);
+        }
+
+        println!("✅ PgPool migrating successfully.");
+    }
+
+
+    /*let mut config = SqliteConnectOptions::new();
     let db_path = &binding.with_file_name("sqlite.db");
     config = config.filename(db_path);
-    let pool = SqlitePool::connect_with(config);
+    let pool = SqlitePool::connect_with(config);*/
 
     // Setup listener.
     let bot: Bot = Bot::new(tg_token);
