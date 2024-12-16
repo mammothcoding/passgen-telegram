@@ -64,4 +64,22 @@ pub mod db_processing {
 
         pool
     }
+
+    pub async fn user_press_inline_btn(pool: &Pool<Postgres>, chat_id: u64, mess_id: i32) {
+        let q = sqlx::query(
+            "INSERT INTO main (id, message)
+            VALUES ($1, $2)
+            ON CONFLICT (id) DO UPDATE SET
+            message = $2",
+        )
+        .bind(chat_id)
+        .bind(mess_id.to_string())
+        .execute(pool)
+        .await;
+
+        match q {
+            Ok(_ok) => println!("📗 Query successfully completed: {:?}", _ok),
+            Err(_err) => println!("📕 Error on query: '{_err}'"),
+        }
+    }
 }

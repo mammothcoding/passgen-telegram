@@ -1,15 +1,19 @@
 mod db_processing;
 pub mod env_processing;
 
-use crate::db_processing::db_processing::init as db_pool_init;
+use crate::db_processing::db_processing::{init as db_pool_init, user_press_inline_btn};
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
 use std::error::Error;
+use std::process;
+use sqlx::{Pool, Postgres};
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
+use teloxide_core::types::MessageId;
+use tokio::sync::OnceCell;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -20,13 +24,22 @@ enum Command {
     Start,
 }
 
+//static ENV_DATA: DotEnv = DotEnv::parse_dot_env();
+
+static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
+
 #[tokio::main]
 async fn main() {
     //Env
     let env_data = DotEnv::parse_dot_env();
 
     //DB
-    let db_pool = db_pool_init(&env_data).await;
+    //static DB_POOL: Pool<Postgres> = db_pool_init(&env_data).await;
+    //DB_POOL: Pool<Postgres> = db_pool_init(&env_data).await;
+    DB_POOL.get_or_init(|| async {
+        db_pool_init(&env_data).await
+    })
+        .await;
 
     // Setup listener.
     let bot: Bot = Bot::new(&env_data.tg_bot_token);
@@ -89,21 +102,35 @@ async fn message_handler(
 }
 
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Error + Send + Sync>> {
-    bot.send_message(
-        q.message.unwrap().chat().id,
-        Passgen::default_strong_and_usab().generate(10),
-    )
-    .await?;
-    //bot.answer_callback_query(&q.id).text("```hop```").show_alert(true).await?;
-    //bot.send_message(q.message.clone().unwrap().chat().id, q.data.clone().unwrap()).await?;
+    let prev_gen_mess: i32 = 265;
+    let chat_id = q.message.clone().unwrap().chat().id;
+    let chat_id_u64: u64 = chat_id.clone().to_string().parse::<u64>().unwrap();
 
-    /*if let Some(ref version) = q.data {
-        let text = format!("You chose: {version}");
-        bot.answer_callback_query(&q.id).await?;
-        if let Some(id) = q.inline_message_id {
-            bot.edit_message_text_inline(id, text).await?;
-        }
+    /*let del_res = bot
+        .delete_message(chat_id.clone(), MessageId(prev_gen_mess))
+        .await;
+    match del_res {
+        Ok(_) => println!(
+            "📗 Mess #{} of user:{} successfully removed",
+            prev_gen_mess,
+            chat_id.clone().to_string()
+        ),
+        Err(_) => println!(
+            "📕 Mess #{} of user:{} was not found!",
+            prev_gen_mess,
+            chat_id.clone().to_string()
+        ),
     }*/
+
+    let s1 = bot
+        .send_message(
+            chat_id.clone(),
+            Passgen::default_strong_and_usab().generate(10),
+        )
+        .await?;
+    let s1_i32: i32 = s1.id.to_string().parse().unwrap();
+
+    user_press_inline_btn(DB_POOL.get().expect("DB_POOL.get().expect"), chat_id_u64, s1_i32).await;
 
     /*if let Some(ref version) = q.data {
         let text = format!("You chose: {version}");
