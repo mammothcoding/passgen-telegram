@@ -19,7 +19,7 @@ pub mod env_processing {
         pub fn parse_dot_env() -> DotEnv {
             let cur_exe_binding = env::current_exe().unwrap();
             let env_path = &cur_exe_binding.with_file_name(".env");
-            let env_variables = read_file(env_path).expect("🚫 Could not load .env file");
+            let env_variables = read_file(env_path).expect("🚫 Could not load .env file!");
             let mut missing_keys: Vec<&str> = Vec::new();
 
             fn get_env_var<'a>(
@@ -60,11 +60,12 @@ pub mod env_processing {
                 db_password: get_env_var("DB_PASSWORD", &env_variables, &mut missing_keys),
             };
 
+            let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
             if missing_keys.is_empty() {
-                println!("✅ .env is OK.");
+                println!("✅ [{now_str}] .env is OK.");
                 res
             } else {
-                println!("🚫 Missing or empty .env keys:");
+                println!("🚫 [{now_str}] Missing or empty .env keys:");
                 println!("{:?}", missing_keys);
                 process::exit(1);
             }

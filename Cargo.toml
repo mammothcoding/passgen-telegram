@@ -72,6 +72,7 @@ rand = { version = "0.8.5", optional = true }
 
 env-file-reader = "=0.3.0"
 passgen-lib = "1.0.4"
+chrono = "0.4.38"
 
 # Reduce the size of the executable  file:
 [profile.release]

@@ -1,19 +1,16 @@
 mod db_processing;
 pub mod env_processing;
 
-use crate::db_processing::db_processing::{init as db_pool_init, user_press_inline_btn};
+use crate::db_processing::db_processing::{get_last_user_mess_id, init as db_pool_init, user_press_inline_btn};
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
 use std::error::Error;
-use std::process;
-use sqlx::{Pool, Postgres};
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 use teloxide_core::types::MessageId;
-use tokio::sync::OnceCell;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -26,20 +23,13 @@ enum Command {
 
 //static ENV_DATA: DotEnv = DotEnv::parse_dot_env();
 
-static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
-
 #[tokio::main]
 async fn main() {
     //Env
     let env_data = DotEnv::parse_dot_env();
 
     //DB
-    //static DB_POOL: Pool<Postgres> = db_pool_init(&env_data).await;
-    //DB_POOL: Pool<Postgres> = db_pool_init(&env_data).await;
-    DB_POOL.get_or_init(|| async {
-        db_pool_init(&env_data).await
-    })
-        .await;
+    db_pool_init(&env_data).await;
 
     // Setup listener.
     let bot: Bot = Bot::new(&env_data.tg_bot_token);
@@ -102,25 +92,34 @@ async fn message_handler(
 }
 
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let prev_gen_mess: i32 = 265;
     let chat_id = q.message.clone().unwrap().chat().id;
-    let chat_id_u64: u64 = chat_id.clone().to_string().parse::<u64>().unwrap();
+    let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
 
-    /*let del_res = bot
-        .delete_message(chat_id.clone(), MessageId(prev_gen_mess))
-        .await;
-    match del_res {
-        Ok(_) => println!(
-            "📗 Mess #{} of user:{} successfully removed",
-            prev_gen_mess,
-            chat_id.clone().to_string()
-        ),
-        Err(_) => println!(
-            "📕 Mess #{} of user:{} was not found!",
-            prev_gen_mess,
-            chat_id.clone().to_string()
-        ),
-    }*/
+    let prev_gen_mess_id = get_last_user_mess_id(chat_id_i64).await;
+    let now_str = chrono::Local::now().format("%d-%b-%y %X:%.6f").to_string();
+    match prev_gen_mess_id {
+        Some(mess_id) => {
+            println!("📗 [{now_str}] Last mess id #{mess_id} for user #{chat_id_i64}.");
+
+            let del_res = bot
+                .delete_message(chat_id.clone(), MessageId(mess_id))
+                .await;
+            let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
+            match del_res {
+                Ok(_) => println!(
+                    "📗 [{now_str}] Mess #{mess_id} of user:{} successfully removed.",
+                    chat_id.clone().to_string()
+                ),
+                Err(_) => println!(
+                    "📕 [{now_str}] Mess #{mess_id} of user:{} was not found!",
+                    chat_id.clone().to_string()
+                ),
+            }
+        },
+        None => println!("📗 [{now_str}] No records found for user #{chat_id_i64}."),
+    }
+
+
 
     let s1 = bot
         .send_message(
@@ -128,9 +127,11 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             Passgen::default_strong_and_usab().generate(10),
         )
         .await?;
+    let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
+    println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
     let s1_i32: i32 = s1.id.to_string().parse().unwrap();
 
-    user_press_inline_btn(DB_POOL.get().expect("DB_POOL.get().expect"), chat_id_u64, s1_i32).await;
+    user_press_inline_btn(chat_id_i64, s1_i32).await;
 
     /*if let Some(ref version) = q.data {
         let text = format!("You chose: {version}");
