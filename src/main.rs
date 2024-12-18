@@ -1,7 +1,9 @@
 mod db_processing;
 pub mod env_processing;
 
-use crate::db_processing::db_processing::{get_last_user_mess_id, init as db_pool_init, user_press_inline_btn};
+use crate::db_processing::db_processing::{
+    get_last_gen_mess_id, init as db_pool_init, user_press_inline_btn,
+};
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
@@ -22,6 +24,9 @@ enum Command {
 }
 
 //static ENV_DATA: DotEnv = DotEnv::parse_dot_env();
+pub fn get_now_str() -> String {
+    chrono::Local::now().format("%d-%b-%y %X%.6f").to_string()
+}
 
 #[tokio::main]
 async fn main() {
@@ -78,7 +83,7 @@ async fn message_handler(
             }
             Ok(Command::Start) => {
                 let keyboard = main_menu();
-                bot.send_message(msg.chat.id, "<b>Main menu:</b>")
+                bot.send_message(msg.chat.id, "⚙<b>Mammothcoding passgen</b>⚙")
                     .parse_mode("HTML".parse().unwrap())
                     .reply_markup(keyboard)
                     .await?;
@@ -95,8 +100,8 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
     let chat_id = q.message.clone().unwrap().chat().id;
     let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
 
-    let prev_gen_mess_id = get_last_user_mess_id(chat_id_i64).await;
-    let now_str = chrono::Local::now().format("%d-%b-%y %X:%.6f").to_string();
+    let prev_gen_mess_id = get_last_gen_mess_id(chat_id_i64).await;
+    let now_str = get_now_str();
     match prev_gen_mess_id {
         Some(mess_id) => {
             println!("📗 [{now_str}] Last mess id #{mess_id} for user #{chat_id_i64}.");
@@ -104,7 +109,7 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             let del_res = bot
                 .delete_message(chat_id.clone(), MessageId(mess_id))
                 .await;
-            let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
+            let now_str = get_now_str();
             match del_res {
                 Ok(_) => println!(
                     "📗 [{now_str}] Mess #{mess_id} of user:{} successfully removed.",
@@ -115,11 +120,9 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
                     chat_id.clone().to_string()
                 ),
             }
-        },
+        }
         None => println!("📗 [{now_str}] No records found for user #{chat_id_i64}."),
     }
-
-
 
     let s1 = bot
         .send_message(
@@ -127,7 +130,7 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             Passgen::default_strong_and_usab().generate(10),
         )
         .await?;
-    let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
+    let now_str = get_now_str();
     println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
     let s1_i32: i32 = s1.id.to_string().parse().unwrap();
 

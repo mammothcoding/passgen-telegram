@@ -2,6 +2,7 @@ pub mod env_processing {
     use env_file_reader::read_file;
     use std::collections::HashMap;
     use std::{env, process};
+    use crate::get_now_str;
 
     pub struct DotEnv {
         pub tg_bot_token: String,
@@ -60,7 +61,7 @@ pub mod env_processing {
                 db_password: get_env_var("DB_PASSWORD", &env_variables, &mut missing_keys),
             };
 
-            let now_str = chrono::Local::now().format("%d-%b-%y %X%.6f").to_string();
+            let now_str = get_now_str();
             if missing_keys.is_empty() {
                 println!("✅ [{now_str}] .env is OK.");
                 res
