@@ -1,8 +1,8 @@
 pub mod env_processing {
+    use crate::get_now_str;
     use env_file_reader::read_file;
     use std::collections::HashMap;
     use std::{env, process};
-    use crate::get_now_str;
 
     pub struct DotEnv {
         pub tg_bot_token: String,

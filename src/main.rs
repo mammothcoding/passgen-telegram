@@ -2,28 +2,31 @@ mod db_processing;
 pub mod env_processing;
 
 use crate::db_processing::db_processing::{
-    get_last_gen_mess_id, init as db_pool_init, user_press_inline_btn,
+    check_user_rec_avail, cr_new_user_rec, get_last_gen_mess_id, get_pgen_rules,
+    init as db_pool_init, user_press_inline_btn,
 };
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
 use std::error::Error;
+use serde::Deserialize;
+use serde_json::from_str;
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 use teloxide_core::types::MessageId;
+use teloxide_core::RequestError;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
 enum Command {
-    /// Choose your destiny
+    /// Select rules and generate password.
     Help,
     /// Main menu
     Start,
 }
 
-//static ENV_DATA: DotEnv = DotEnv::parse_dot_env();
 pub fn get_now_str() -> String {
     chrono::Local::now().format("%d-%b-%y %X%.6f").to_string()
 }
@@ -62,7 +65,21 @@ async fn main() {
         .await;
 }
 
-fn main_menu() -> InlineKeyboardMarkup {
+async fn main_menu(chat_id_i64: i64) -> InlineKeyboardMarkup {
+    #[derive(Deserialize, Debug)]
+    struct Rules {
+        enab_letters: bool,
+        enab_u_letters: bool,
+        enab_num: bool,
+        enab_spec_symbs: bool,
+        custom_charset: String,
+        enab_strong_usab: bool,
+        pwd_len: u64
+    }
+    let pgen_rules_string = get_pgen_rules(chat_id_i64).await.unwrap();
+    let pgen_rules: Rules = from_str(&pgen_rules_string[..]).unwrap();
+    println!("📎 Deser: {:#?}", pgen_rules);
+
     let settings_btn = InlineKeyboardButton::callback("⚙SETTINGS", "settings");
     let gen_btn = InlineKeyboardButton::callback("▶GENERATE", "generate");
     let inline_btns = [[settings_btn], [gen_btn]];
@@ -82,11 +99,55 @@ async fn message_handler(
                     .await?;
             }
             Ok(Command::Start) => {
-                let keyboard = main_menu();
-                bot.send_message(msg.chat.id, "⚙<b>Mammothcoding passgen</b>⚙")
-                    .parse_mode("HTML".parse().unwrap())
-                    .reply_markup(keyboard)
-                    .await?;
+                let chat_id_i64: i64 = msg.clone().chat.id.to_string().parse::<i64>().unwrap();
+                let now_str = get_now_str();
+
+                async fn gen_and_send_main_menu(
+                    chat_id: i64,
+                    bot: Bot,
+                    msg: Message,
+                ) -> Result<Message, RequestError> {
+                    let keyboard = main_menu(chat_id).await;
+
+                    bot.send_message(msg.clone().chat.id, "⚙<b>Mammothcoding passgen</b>⚙")
+                        .parse_mode("HTML".parse().unwrap())
+                        .reply_markup(keyboard)
+                        .await
+                }
+
+                if check_user_rec_avail(chat_id_i64).await {
+                    gen_and_send_main_menu(chat_id_i64, bot, msg).await.expect(
+                        format!("🚫 [{now_str}] Panic on gen_and_send_main_menu()").as_str(),
+                    );
+                } else {
+                    match msg.clone().from {
+                        Some(from) => {
+                            let cr_result = cr_new_user_rec(chat_id_i64, from).await;
+                            if cr_result {
+                                gen_and_send_main_menu(chat_id_i64, bot, msg).await.expect(
+                                    format!("🚫 [{now_str}] Panic on gen_and_send_main_menu()")
+                                        .as_str(),
+                                );
+                            } else {
+                                bot.send_message(
+                                    msg.chat.id,
+                                    "⚠️ Sorry, internal service error. Please use the service later.",
+                                )
+                                    .await?;
+                            }
+                        }
+                        _ => {
+                            println!(
+                                "📕 [{now_str}] Error on getting msg.from. Chat_id #{chat_id_i64}."
+                            );
+                            bot.send_message(
+                                msg.chat.id,
+                                "⚠️ Sorry, internal service error. Please use the service later.",
+                            )
+                            .await?;
+                        }
+                    }
+                }
             }
             Err(_) => {
                 bot.send_message(msg.chat.id, "🚫 Illegal command!").await?;
@@ -124,11 +185,10 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
         None => println!("📗 [{now_str}] No records found for user #{chat_id_i64}."),
     }
 
+    let pwd = Passgen::default().generate(10);
     let s1 = bot
-        .send_message(
-            chat_id.clone(),
-            Passgen::default_strong_and_usab().generate(10),
-        )
+        .send_message(chat_id.clone(), format!("<b><code>{pwd}</code></b>"))
+        .parse_mode("HTML".parse().unwrap())
         .await?;
     let now_str = get_now_str();
     println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");

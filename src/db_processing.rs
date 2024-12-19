@@ -1,9 +1,10 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
+    use crate::get_now_str;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
+    use teloxide_core::types::User;
     use tokio::sync::OnceCell;
-    use crate::get_now_str;
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
@@ -80,6 +81,89 @@ pub mod db_processing {
         println!("✅ [{now_str}] DB migrating status.");
 
         DB_POOL.get_or_init(|| async { pool }).await;
+    }
+
+    pub async fn check_user_rec_avail(chat_id: i64) -> bool {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("SELECT id from main WHERE id = ");
+        q.push_bind(chat_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool);
+
+        let now_str = get_now_str();
+        match res.await {
+            Ok(_ok) => {
+                println!(
+                    "📗 [{now_str}] Query check_user_rec_avail successfully completed: {:?}.",
+                    _ok
+                );
+                true
+            }
+            Err(_err) => {
+                println!("📙 [{now_str}] Empty result of query check_user_rec_avail: '{_err}'.");
+                false
+            }
+        }
+    }
+
+    pub async fn cr_new_user_rec(chat_id: i64, from: User) -> bool {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
+            "INSERT INTO main (
+            id, is_bot, first_name, last_name, username, language_code) VALUES (",
+        );
+        q.push_bind(chat_id);
+        q.push(",");
+        q.push_bind(from.is_bot);
+        q.push(",");
+        q.push_bind(from.first_name);
+        q.push(",");
+        q.push_bind(from.last_name);
+        q.push(",");
+        q.push_bind(from.username);
+        q.push(",");
+        q.push_bind(from.language_code);
+        q.push(")");
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => {
+                println!(
+                    "📗 [{now_str}] Register new user #{chat_id} in DB: {:?}.",
+                    _ok
+                );
+                true
+            }
+            Err(_err) => {
+                println!("📕 [{now_str}] Error on reg new user #{chat_id} in DB: '{_err}'.");
+                false
+            }
+        }
+    }
+
+    pub async fn get_pgen_rules(chat_id: i64) -> Option<String> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT pgen_rules from main WHERE id = ");
+        q.push_bind(chat_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool);
+
+        let now_str = get_now_str();
+        match res.await {
+            Ok(_ok) => {
+                println!(
+                    "📗 [{now_str}] Query get_pgen_rules successfully completed: {:#?}.",
+                    _ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                println!("📙 [{now_str}] Empty result of query get_pgen_rules: '{_err}'.");
+                None
+            }
+        }
     }
 
     pub async fn get_last_gen_mess_id(chat_id: i64) -> Option<i32> {
