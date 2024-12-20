@@ -1,10 +1,10 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
     use crate::{get_now_str, Rules};
-    use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
-    use std::process;
     use sqlx::postgres::PgRow;
     use sqlx::types::Json;
+    use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
+    use std::process;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
 
@@ -162,7 +162,7 @@ pub mod db_processing {
                         println!("📗 [{now_str}] Get Rules for user #{chat_id} is successfully.");
                         println!("📗 {_ok:#?}");
                         Option::from(_ok)
-                    },
+                    }
                     Err(_err) => {
                         println!("📕 Get Rules for user #{chat_id} has error: {}", _err);
                         None

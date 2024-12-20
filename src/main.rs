@@ -8,11 +8,11 @@ use crate::db_processing::db_processing::{
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
-use std::error::Error;
 use serde::{Deserialize, Deserializer};
 use serde_json::{from_str, json};
-use sqlx::{Column, Row, ValueRef};
 use sqlx::postgres::PgColumn;
+use sqlx::{Column, Row, ValueRef};
+use std::error::Error;
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
@@ -35,63 +35,9 @@ struct Rules {
     enab_u_letters: bool,
     enab_num: bool,
     enab_spec_symbs: bool,
-    custom_charset: String,
     enab_strong_usab: bool,
-    pwd_len: u64
-}
-
-impl Rules {
-    pub fn get_btn_str(&self, field: &str) -> &str {
-        match field {
-            "enab_letters" => {
-                if self.enab_letters {
-                    "✅ include lowercase letters"
-                } else {
-                    "◻ include lowercase letters"
-                }
-            },
-            "enab_u_letters" => {
-                if self.enab_u_letters {
-                    "✅ include capital letters"
-                } else {
-                    "◻ include capital letters"
-                }
-            },
-            "enab_num" => {
-                if self.enab_num {
-                    "✅ include numbers"
-                } else {
-                    "◻ include numbers"
-                }
-            },
-            "enab_spec_symbs" => {
-                if self.enab_spec_symbs {
-                    "✅ include special symbols"
-                } else {
-                    "◻ include special symbols"
-                }
-            },
-            "enab_strong_usab" => {
-                if self.enab_strong_usab {
-                    "✅ strong & usability password"
-                } else {
-                    "◻ strong & usability password"
-                }
-            },
-            "custom_charset" => {
-                if self.custom_charset.is_empty() {
-                    "◻ custom charset. Press to set."
-                } else {
-                    "✅ custom charset. Press to set."
-                }
-            },
-            "pwd_len" => &format!("Password length is {}. Press to set.", &self.pwd_len).clone()[..],
-            _ => "_"
-        }
-        /*if self.From::<&str>(field) {
-            let name =
-        }*/
-    }
+    custom_charset: String,
+    pwd_len: u64,
 }
 
 pub fn get_now_str() -> String {
@@ -132,14 +78,61 @@ async fn main() {
         .await;
 }
 
-async fn main_menu(chat_id_i64: i64) -> InlineKeyboardMarkup {
+async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
+    let rules: Rules = get_pgen_rules(chat_id).await.unwrap();
 
-    let rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
-    //let b =
+    let enab_letters = if rules.enab_letters {
+        "✅ include lowercase letters"
+    } else {
+        "☐ include lowercase letters"
+    };
+    let enab_u_letters = {
+        if rules.enab_u_letters {
+            "✅ include capital letters"
+        } else {
+            "☐ include capital letters"
+        }
+    };
+    let enab_num = {
+        if rules.enab_num {
+            "✅ include numbers"
+        } else {
+            "☐ include numbers"
+        }
+    };
+    let enab_spec_symbs = {
+        if rules.enab_spec_symbs {
+            "✅ include special symbols"
+        } else {
+            "☐ include special symbols"
+        }
+    };
+    let enab_strong_usab = {
+        if rules.enab_strong_usab {
+            "✅ strong & usability password"
+        } else {
+            "☐ strong & usability password"
+        }
+    };
+    let custom_charset = {
+        if rules.custom_charset.is_empty() {
+            "☐ custom charset. Press to set."
+        } else {
+            "✅ custom charset. Press to set."
+        }
+    };
+    let pwd_len = &format!("Password length is {}. Press to set.", rules.pwd_len)[..];
 
-    let settings_btn = InlineKeyboardButton::callback("⚙SETTINGS", "settings");
-    let gen_btn = InlineKeyboardButton::callback("▶GENERATE", "generate");
-    let inline_btns = [[settings_btn], [gen_btn]];
+    let inline_btns = [
+        [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
+        [InlineKeyboardButton::callback(enab_u_letters, "enab_u_letters")],
+        [InlineKeyboardButton::callback(enab_num, "enab_num")],
+        [InlineKeyboardButton::callback(enab_spec_symbs, "enab_spec_symbs")],
+        [InlineKeyboardButton::callback(enab_strong_usab, "enab_strong_usab")],
+        [InlineKeyboardButton::callback(custom_charset, "custom_charset")],
+        [InlineKeyboardButton::callback(pwd_len, "pwd_len")],
+        [InlineKeyboardButton::callback("▶GENERATE", "generate")],
+    ];
 
     InlineKeyboardMarkup::new(inline_btns)
 }
