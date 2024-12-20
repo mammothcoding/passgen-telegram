@@ -9,8 +9,10 @@ use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
 use std::error::Error;
-use serde::Deserialize;
-use serde_json::from_str;
+use serde::{Deserialize, Deserializer};
+use serde_json::{from_str, json};
+use sqlx::{Column, Row, ValueRef};
+use sqlx::postgres::PgColumn;
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
@@ -25,6 +27,71 @@ enum Command {
     Help,
     /// Main menu
     Start,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+struct Rules {
+    enab_letters: bool,
+    enab_u_letters: bool,
+    enab_num: bool,
+    enab_spec_symbs: bool,
+    custom_charset: String,
+    enab_strong_usab: bool,
+    pwd_len: u64
+}
+
+impl Rules {
+    pub fn get_btn_str(&self, field: &str) -> &str {
+        match field {
+            "enab_letters" => {
+                if self.enab_letters {
+                    "✅ include lowercase letters"
+                } else {
+                    "◻ include lowercase letters"
+                }
+            },
+            "enab_u_letters" => {
+                if self.enab_u_letters {
+                    "✅ include capital letters"
+                } else {
+                    "◻ include capital letters"
+                }
+            },
+            "enab_num" => {
+                if self.enab_num {
+                    "✅ include numbers"
+                } else {
+                    "◻ include numbers"
+                }
+            },
+            "enab_spec_symbs" => {
+                if self.enab_spec_symbs {
+                    "✅ include special symbols"
+                } else {
+                    "◻ include special symbols"
+                }
+            },
+            "enab_strong_usab" => {
+                if self.enab_strong_usab {
+                    "✅ strong & usability password"
+                } else {
+                    "◻ strong & usability password"
+                }
+            },
+            "custom_charset" => {
+                if self.custom_charset.is_empty() {
+                    "◻ custom charset. Press to set."
+                } else {
+                    "✅ custom charset. Press to set."
+                }
+            },
+            "pwd_len" => &format!("Password length is {}. Press to set.", &self.pwd_len).clone()[..],
+            _ => "_"
+        }
+        /*if self.From::<&str>(field) {
+            let name =
+        }*/
+    }
 }
 
 pub fn get_now_str() -> String {
@@ -66,19 +133,9 @@ async fn main() {
 }
 
 async fn main_menu(chat_id_i64: i64) -> InlineKeyboardMarkup {
-    #[derive(Deserialize, Debug)]
-    struct Rules {
-        enab_letters: bool,
-        enab_u_letters: bool,
-        enab_num: bool,
-        enab_spec_symbs: bool,
-        custom_charset: String,
-        enab_strong_usab: bool,
-        pwd_len: u64
-    }
-    let pgen_rules_string = get_pgen_rules(chat_id_i64).await.unwrap();
-    let pgen_rules: Rules = from_str(&pgen_rules_string[..]).unwrap();
-    println!("📎 Deser: {:#?}", pgen_rules);
+
+    let rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+    //let b =
 
     let settings_btn = InlineKeyboardButton::callback("⚙SETTINGS", "settings");
     let gen_btn = InlineKeyboardButton::callback("▶GENERATE", "generate");

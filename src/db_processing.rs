@@ -1,8 +1,10 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
-    use crate::get_now_str;
+    use crate::{get_now_str, Rules};
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
+    use sqlx::postgres::PgRow;
+    use sqlx::types::Json;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
 
@@ -142,22 +144,30 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_pgen_rules(chat_id: i64) -> Option<String> {
+    pub async fn get_pgen_rules(chat_id: i64) -> Option<Rules> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT pgen_rules from main WHERE id = ");
+            QueryBuilder::new("SELECT pgen_rules as Json from main WHERE id = ");
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
-        let res = q.build().fetch_one(pool);
+        let res = q.build().fetch_one(pool).await;
 
         let now_str = get_now_str();
-        match res.await {
+        match res {
             Ok(_ok) => {
-                println!(
-                    "📗 [{now_str}] Query get_pgen_rules successfully completed: {:#?}.",
-                    _ok
-                );
-                _ok.get(0)
+                let pgen_rules_json = &_ok.try_get_raw(0).unwrap().as_str().unwrap()[1..];
+                let parse_to_rules = serde_json::from_str::<Rules>(pgen_rules_json);
+                match parse_to_rules {
+                    Ok(_ok) => {
+                        println!("📗 [{now_str}] Get Rules for user #{chat_id} is successfully.");
+                        println!("📗 {_ok:#?}");
+                        Option::from(_ok)
+                    },
+                    Err(_err) => {
+                        println!("📕 Get Rules for user #{chat_id} has error: {}", _err);
+                        None
+                    }
+                }
             }
             Err(_err) => {
                 println!("📙 [{now_str}] Empty result of query get_pgen_rules: '{_err}'.");

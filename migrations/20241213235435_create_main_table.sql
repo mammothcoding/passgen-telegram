@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS main (
       "enab_u_letters": false,
       "enab_num": false,
       "enab_spec_symbs": false,
-      "custom_charset": null,
+      "custom_charset": "",
       "enab_strong_usab": true,
       "pwd_len": 8
     }'::jsonb,
