@@ -69,6 +69,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(callback_handler));
 
     Dispatcher::builder(bot, handler)
+        //.dependencies(dptree::deps![db_pool])
         .enable_ctrlc_handler()
         .build()
         .dispatch_with_listener(
@@ -125,11 +126,23 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
 
     let inline_btns = [
         [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
-        [InlineKeyboardButton::callback(enab_u_letters, "enab_u_letters")],
+        [InlineKeyboardButton::callback(
+            enab_u_letters,
+            "enab_u_letters",
+        )],
         [InlineKeyboardButton::callback(enab_num, "enab_num")],
-        [InlineKeyboardButton::callback(enab_spec_symbs, "enab_spec_symbs")],
-        [InlineKeyboardButton::callback(enab_strong_usab, "enab_strong_usab")],
-        [InlineKeyboardButton::callback(custom_charset, "custom_charset")],
+        [InlineKeyboardButton::callback(
+            enab_spec_symbs,
+            "enab_spec_symbs",
+        )],
+        [InlineKeyboardButton::callback(
+            enab_strong_usab,
+            "enab_strong_usab",
+        )],
+        [InlineKeyboardButton::callback(
+            custom_charset,
+            "custom_charset",
+        )],
         [InlineKeyboardButton::callback(pwd_len, "pwd_len")],
         [InlineKeyboardButton::callback("▶GENERATE", "generate")],
     ];
@@ -208,18 +221,62 @@ async fn message_handler(
 }
 
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let chat_id = q.message.clone().unwrap().chat().id;
+    let chat_id: ChatId = q.message.clone().unwrap().chat().id;
     let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
+    let action = q.data;
 
+    match action {
+        Some(act)
+            if act == "enab_letters".to_string()
+                || act == "enab_u_letters".to_string()
+                || act == "enab_num".to_string()
+                || act == "enab_spec_symbs".to_string()
+                || act == "enab_strong_usab".to_string()
+                || act == "pwd_len".to_string() =>
+        {
+            println!("action = {act}")
+        },
+        Some(act) if act == "custom_charset".to_string() => {
+            println!("action = {act}")
+        },
+        Some(act) if act == "generate".to_string() => {
+            remove_prev_mess(&bot, chat_id, chat_id_i64, false).await;
+
+            let rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+            let mut pgen_from_rules: Passgen = Passgen {
+                enab_letters: rules.enab_letters,
+                enab_u_letters: rules.enab_u_letters,
+                enab_num: rules.enab_num,
+                enab_spec_symbs: rules.enab_spec_symbs,
+                custom_charset: rules.custom_charset.leak(),
+                enab_strong_usab: rules.enab_strong_usab
+            };
+            let pwd = pgen_from_rules.generate(rules.pwd_len as u32);
+            //let pwd = Passgen::default().generate(10);
+            let mess = bot
+                .send_message(chat_id.clone(), format!("<b><code>{pwd}</code></b>"))
+                .parse_mode("HTML".parse().unwrap())
+                .await?;
+            let now_str = get_now_str();
+            println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
+            let mess_i32: i32 = mess.id.to_string().parse().unwrap();
+
+            user_press_inline_btn(chat_id_i64, mess_i32).await;
+        },
+        _ => println!("🚫 Unrecognized callback action!"),
+    }
+
+    Ok(())
+}
+
+async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, is_kbd: bool) {
     let prev_gen_mess_id = get_last_gen_mess_id(chat_id_i64).await;
     let now_str = get_now_str();
     match prev_gen_mess_id {
         Some(mess_id) => {
             println!("📗 [{now_str}] Last mess id #{mess_id} for user #{chat_id_i64}.");
 
-            let del_res = bot
-                .delete_message(chat_id.clone(), MessageId(mess_id))
-                .await;
+            let del_res = bot.delete_message(chat_id, MessageId(mess_id)).await;
             let now_str = get_now_str();
             match del_res {
                 Ok(_) => println!(
@@ -234,33 +291,4 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
         }
         None => println!("📗 [{now_str}] No records found for user #{chat_id_i64}."),
     }
-
-    let pwd = Passgen::default().generate(10);
-    let s1 = bot
-        .send_message(chat_id.clone(), format!("<b><code>{pwd}</code></b>"))
-        .parse_mode("HTML".parse().unwrap())
-        .await?;
-    let now_str = get_now_str();
-    println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
-    let s1_i32: i32 = s1.id.to_string().parse().unwrap();
-
-    user_press_inline_btn(chat_id_i64, s1_i32).await;
-
-    /*if let Some(ref version) = q.data {
-        let text = format!("You chose: {version}");
-
-        // Tell telegram that we've seen this query, to remove 🕑 icons from the
-        // clients. You could also use `answer_callback_query`'s optional
-        // parameters to tweak what happens on the client side.
-        bot.answer_callback_query(&q.id).await?;
-
-        // Edit text of the message to which the buttons were attached
-        if let Some(message) = q.regular_message() {
-            bot.edit_message_text() .edit_text(message, text).await?;
-        } else if let Some(id) = q.inline_message_id {
-            bot.edit_message_text_inline(id, text).await?;
-        }
-    }*/
-
-    Ok(())
 }
