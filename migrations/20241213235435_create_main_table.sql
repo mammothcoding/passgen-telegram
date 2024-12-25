@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS main (
       "pwd_len": 8
     }'::jsonb,
     gen_count int8 default 0,
+    dialog_context varchar,
+    created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
 

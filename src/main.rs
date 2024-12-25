@@ -1,13 +1,16 @@
 mod db_processing;
 pub mod env_processing;
+mod rules;
+mod tg_processing;
 
 use crate::db_processing::db_processing::{
-    check_user_rec_avail, cr_new_user_rec, get_last_gen_mess_id, get_pgen_rules,
-    init as db_pool_init, user_press_inline_btn,
+    check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
+    increase_user_gen_count, init as db_pool_init, set_last_mess_id, update_rules,
 };
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
+use rules::rules::Rules;
 use serde::{Deserialize, Deserializer};
 use serde_json::{from_str, json};
 use sqlx::postgres::PgColumn;
@@ -27,17 +30,6 @@ enum Command {
     Help,
     /// Main menu
     Start,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-struct Rules {
-    enab_letters: bool,
-    enab_u_letters: bool,
-    enab_num: bool,
-    enab_spec_symbs: bool,
-    enab_strong_usab: bool,
-    custom_charset: String,
-    pwd_len: u64,
 }
 
 pub fn get_now_str() -> String {
@@ -85,44 +77,44 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
     let enab_letters = if rules.enab_letters {
         "✅ include lowercase letters"
     } else {
-        "☐ include lowercase letters"
+        "➖ include lowercase letters"
     };
     let enab_u_letters = {
         if rules.enab_u_letters {
             "✅ include capital letters"
         } else {
-            "☐ include capital letters"
+            "➖ include capital letters"
         }
     };
     let enab_num = {
         if rules.enab_num {
             "✅ include numbers"
         } else {
-            "☐ include numbers"
+            "➖ include numbers"
         }
     };
     let enab_spec_symbs = {
         if rules.enab_spec_symbs {
             "✅ include special symbols"
         } else {
-            "☐ include special symbols"
+            "➖ include special symbols"
         }
     };
     let enab_strong_usab = {
         if rules.enab_strong_usab {
             "✅ strong & usability password"
         } else {
-            "☐ strong & usability password"
+            "➖ strong & usability password"
         }
     };
     let custom_charset = {
         if rules.custom_charset.is_empty() {
-            "☐ custom charset. Press to set."
+            "➖ custom charset. Press to set."
         } else {
             "✅ custom charset. Press to set."
         }
     };
-    let pwd_len = &format!("Password length is {}. Press to set.", rules.pwd_len)[..];
+    let pwd_len = &format!("{} password length. Press to edit.", rules.pwd_len)[..];
 
     let inline_btns = [
         [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
@@ -150,6 +142,30 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
     InlineKeyboardMarkup::new(inline_btns)
 }
 
+async fn gen_and_send_main_menu(bot: &Bot, chat_id: ChatId, chat_id_i64: i64) {
+    let keyboard = main_menu(chat_id_i64).await;
+
+    let mess = bot
+        .send_message(chat_id, "<b>⬇ RULE SETTING AND GEN PWD ⬇</b>")
+        .parse_mode("HTML".parse().unwrap())
+        .reply_markup(keyboard)
+        .await;
+    let now_str = get_now_str();
+
+    match mess {
+        Ok(_ok) => {
+            println!("📗 [{now_str}] New menu for user #{chat_id_i64} was sent.");
+            let mess_id: i32 = _ok.id.to_string().parse().unwrap();
+            set_last_mess_id(chat_id_i64, mess_id, "last_menu_mess_id").await;
+        }
+        Err(_err) => {
+            println!(
+                "📕 [{now_str}] Error on sending of new menu for user #{chat_id_i64}: '{_err}'."
+            );
+        }
+    }
+}
+
 async fn message_handler(
     bot: Bot,
     msg: Message,
@@ -162,38 +178,21 @@ async fn message_handler(
                     .await?;
             }
             Ok(Command::Start) => {
-                let chat_id_i64: i64 = msg.clone().chat.id.to_string().parse::<i64>().unwrap();
+                let chat_id: ChatId = (&msg.chat.id).to_owned();
+                let chat_id_i64: i64 = chat_id.to_string().parse::<i64>().unwrap();
                 let now_str = get_now_str();
 
-                async fn gen_and_send_main_menu(
-                    chat_id: i64,
-                    bot: Bot,
-                    msg: Message,
-                ) -> Result<Message, RequestError> {
-                    let keyboard = main_menu(chat_id).await;
-
-                    bot.send_message(msg.clone().chat.id, "⚙<b>Mammothcoding passgen</b>⚙")
-                        .parse_mode("HTML".parse().unwrap())
-                        .reply_markup(keyboard)
-                        .await
-                }
-
                 if check_user_rec_avail(chat_id_i64).await {
-                    gen_and_send_main_menu(chat_id_i64, bot, msg).await.expect(
-                        format!("🚫 [{now_str}] Panic on gen_and_send_main_menu()").as_str(),
-                    );
+                    gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                 } else {
                     match msg.clone().from {
                         Some(from) => {
                             let cr_result = cr_new_user_rec(chat_id_i64, from).await;
                             if cr_result {
-                                gen_and_send_main_menu(chat_id_i64, bot, msg).await.expect(
-                                    format!("🚫 [{now_str}] Panic on gen_and_send_main_menu()")
-                                        .as_str(),
-                                );
+                                gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                             } else {
                                 bot.send_message(
-                                    msg.chat.id,
+                                    chat_id,
                                     "⚠️ Sorry, internal service error. Please use the service later.",
                                 )
                                     .await?;
@@ -204,7 +203,7 @@ async fn message_handler(
                                 "📕 [{now_str}] Error on getting msg.from. Chat_id #{chat_id_i64}."
                             );
                             bot.send_message(
-                                msg.chat.id,
+                                chat_id,
                                 "⚠️ Sorry, internal service error. Please use the service later.",
                             )
                             .await?;
@@ -213,7 +212,7 @@ async fn message_handler(
                 }
             }
             Err(_) => {
-                bot.send_message(msg.chat.id, "🚫 Illegal command!").await?;
+                bot.send_message(msg.chat.id, "🚫 Unknown command!").await?;
             }
         }
     }
@@ -224,6 +223,7 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
     let chat_id: ChatId = q.message.clone().unwrap().chat().id;
     let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
     let action = q.data;
+    let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
 
     match action {
         Some(act)
@@ -231,64 +231,70 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
                 || act == "enab_u_letters".to_string()
                 || act == "enab_num".to_string()
                 || act == "enab_spec_symbs".to_string()
-                || act == "enab_strong_usab".to_string()
-                || act == "pwd_len".to_string() =>
+                || act == "enab_strong_usab".to_string() =>
         {
-            println!("action = {act}")
-        },
+            rules.reconfigure_rules_according_selector(act.clone());
+            let set_rules_res = update_rules(chat_id_i64, rules).await;
+            if set_rules_res {
+                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+            }
+        }
         Some(act) if act == "custom_charset".to_string() => {
             println!("action = {act}")
-        },
+        }
+        Some(act) if act == "pwd_len".to_string() => {
+            println!("action = {act}")
+        }
         Some(act) if act == "generate".to_string() => {
-            remove_prev_mess(&bot, chat_id, chat_id_i64, false).await;
+            remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
 
-            let rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
             let mut pgen_from_rules: Passgen = Passgen {
                 enab_letters: rules.enab_letters,
                 enab_u_letters: rules.enab_u_letters,
                 enab_num: rules.enab_num,
                 enab_spec_symbs: rules.enab_spec_symbs,
                 custom_charset: rules.custom_charset.leak(),
-                enab_strong_usab: rules.enab_strong_usab
+                enab_strong_usab: rules.enab_strong_usab,
             };
             let pwd = pgen_from_rules.generate(rules.pwd_len as u32);
-            //let pwd = Passgen::default().generate(10);
+
             let mess = bot
                 .send_message(chat_id.clone(), format!("<b><code>{pwd}</code></b>"))
                 .parse_mode("HTML".parse().unwrap())
                 .await?;
             let now_str = get_now_str();
             println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
-            let mess_i32: i32 = mess.id.to_string().parse().unwrap();
+            let mess_id: i32 = mess.id.to_string().parse().unwrap();
 
-            user_press_inline_btn(chat_id_i64, mess_i32).await;
-        },
+            increase_user_gen_count(chat_id_i64).await;
+            set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
+        }
         _ => println!("🚫 Unrecognized callback action!"),
     }
 
     Ok(())
 }
 
-async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, is_kbd: bool) {
-    let prev_gen_mess_id = get_last_gen_mess_id(chat_id_i64).await;
+async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, id_field: &str) {
+    let prev_mess_id = get_last_mess_id(chat_id_i64, id_field).await;
     let now_str = get_now_str();
-    match prev_gen_mess_id {
+    match prev_mess_id {
         Some(mess_id) => {
-            println!("📗 [{now_str}] Last mess id #{mess_id} for user #{chat_id_i64}.");
-
             let del_res = bot.delete_message(chat_id, MessageId(mess_id)).await;
             let now_str = get_now_str();
             match del_res {
                 Ok(_) => println!(
-                    "📗 [{now_str}] Mess #{mess_id} of user:{} successfully removed.",
+                    "📗 [{now_str}] Mess #{mess_id} at field {id_field} of user:{} successfully removed.",
                     chat_id.clone().to_string()
                 ),
                 Err(_) => println!(
-                    "📕 [{now_str}] Mess #{mess_id} of user:{} was not found!",
+                    "📙 [{now_str}] Mess #{mess_id} at field {id_field} of user:{} was not found or already has been removed!",
                     chat_id.clone().to_string()
                 ),
             }
         }
-        None => println!("📗 [{now_str}] No records found for user #{chat_id_i64}."),
+        None => println!("📙 [{now_str}] No records to remove \"{id_field}\" found for user #{chat_id_i64}."),
     }
 }

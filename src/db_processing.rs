@@ -10,10 +10,6 @@ pub mod db_processing {
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
-    pub fn get_now_tstamptz() -> i64 {
-        chrono::Local::now().timestamp()
-    }
-
     pub async fn init(env_data: &DotEnv) {
         let connection = PgConnection::connect(
             format!(
@@ -80,7 +76,7 @@ pub mod db_processing {
             println!("🚫 [{now_str}] Error on migrates: '{}'.", _err);
             process::exit(1);
         }
-        println!("✅ [{now_str}] DB migrating status.");
+        println!("✅ [{now_str}] DB migrating status is OK.");
 
         DB_POOL.get_or_init(|| async { pool }).await;
     }
@@ -176,10 +172,10 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_last_gen_mess_id(chat_id: i64) -> Option<i32> {
+    pub async fn get_last_mess_id(chat_id: i64, id_field: &str) -> Option<i32> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT last_gen_mess_id from main WHERE id = ");
+            QueryBuilder::new(format!("SELECT {id_field} from main WHERE id = "));
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
@@ -200,21 +196,59 @@ pub mod db_processing {
         }
     }
 
-    pub async fn user_press_inline_btn(chat_id: i64, mess_id: i32) {
+    pub async fn set_last_mess_id(chat_id: i64, mess_id: i32, id_field: &str) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("INSERT INTO main (id, last_gen_mess_id) VALUES (");
+            QueryBuilder::new(format!("UPDATE main SET {id_field} = "));
+        q.push_bind(mess_id);
+        q.push(", updated_at = current_timestamp");
+        q.push(" WHERE id = ");
         q.push_bind(chat_id);
-        q.push(",");
-        q.push_bind(mess_id);
-        q.push(") ON CONFLICT (id) DO UPDATE SET last_gen_mess_id = ");
-        q.push_bind(mess_id);
         let res = q.build().execute(pool).await;
 
         let now_str = get_now_str();
         match res {
-            Ok(_ok) => println!("📗 [{now_str}] Register new mess #{mess_id} of gen password successfully completed: {:?}.", _ok),
-            Err(_err) => println!("📕 [{now_str}] Error on query of register new mess #{mess_id} of gen password: '{_err}'."),
+            Ok(_ok) => println!("📗 [{now_str}] Register new mess id #{mess_id} to {id_field} field."),
+            Err(_err) => println!("📕 [{now_str}] Error on query of register new mess id #{mess_id} to {id_field} field: '{_err}'."),
+        }
+    }
+
+    pub async fn update_rules(chat_id: i64, rules: Rules) -> bool {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET pgen_rules = ");
+        q.push_bind(Json(rules));
+        q.push(" WHERE id = ");
+        q.push_bind(chat_id);
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => {
+                println!("📗 [{now_str}] Rules has been updated for user #{chat_id}.");
+                true
+            }
+            Err(_err) => {
+                println!("📕 [{now_str}] Error on updating rules for user #{chat_id}.: '{_err}'.");
+                false
+            }
+        }
+    }
+
+    pub async fn increase_user_gen_count(chat_id: i64) {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
+            "UPDATE main SET gen_count = gen_count + 1, updated_at = current_timestamp",
+        );
+        q.push(" WHERE id = ");
+        q.push_bind(chat_id);
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => println!("📗 [{now_str}] Increase gen_count for user #{chat_id}."),
+            Err(_err) => println!(
+                "📕 [{now_str}] Error on increase gen_count for user #{chat_id}.: '{_err}'."
+            ),
         }
     }
 }
