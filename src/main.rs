@@ -5,7 +5,8 @@ mod tg_processing;
 
 use crate::db_processing::db_processing::{
     check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
-    increase_user_gen_count, init as db_pool_init, set_last_mess_id, update_rules,
+    get_user_dialog_context, increase_user_gen_count, init as db_pool_init, set_last_mess_id,
+    set_user_dialog_context, update_rules,
 };
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
@@ -114,7 +115,7 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
             "✅ custom charset. Press to set."
         }
     };
-    let pwd_len = &format!("{} password length. Press to edit.", rules.pwd_len)[..];
+    let pwd_len = &format!("{}  ◅password length. Press to edit.", rules.pwd_len)[..];
 
     let inline_btns = [
         [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
@@ -136,7 +137,7 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
             "custom_charset",
         )],
         [InlineKeyboardButton::callback(pwd_len, "pwd_len")],
-        [InlineKeyboardButton::callback("▶GENERATE", "generate")],
+        [InlineKeyboardButton::callback("🎲GENERATE", "generate")],
     ];
 
     InlineKeyboardMarkup::new(inline_btns)
@@ -172,24 +173,28 @@ async fn message_handler(
     me: Me,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     if let Some(text) = msg.text() {
+        let chat_id: ChatId = (&msg.chat.id).to_owned();
+        let chat_id_i64: i64 = chat_id.to_string().parse::<i64>().unwrap();
+
         match BotCommands::parse(text, me.username()) {
             Ok(Command::Help) => {
                 bot.send_message(msg.chat.id, Command::descriptions().to_string())
                     .await?;
+                set_user_dialog_context(chat_id_i64, "NULL").await;
             }
             Ok(Command::Start) => {
-                let chat_id: ChatId = (&msg.chat.id).to_owned();
-                let chat_id_i64: i64 = chat_id.to_string().parse::<i64>().unwrap();
                 let now_str = get_now_str();
 
                 if check_user_rec_avail(chat_id_i64).await {
                     gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+                    set_user_dialog_context(chat_id_i64, "NULL").await;
                 } else {
-                    match msg.clone().from {
+                    match msg.from {
                         Some(from) => {
                             let cr_result = cr_new_user_rec(chat_id_i64, from).await;
                             if cr_result {
                                 gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+                                set_user_dialog_context(chat_id_i64, "NULL").await;
                             } else {
                                 bot.send_message(
                                     chat_id,
@@ -212,7 +217,26 @@ async fn message_handler(
                 }
             }
             Err(_) => {
-                bot.send_message(msg.chat.id, "🚫 Unknown command!").await?;
+                let context = get_user_dialog_context(chat_id_i64).await;
+                match context {
+                    Some(context) if context == "custom_charset".to_string() => {
+                        println!("context = {context}");
+                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                    }
+                    Some(context) if context == "pwd_len".to_string() => {
+                        println!("context = {context}");
+                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                    }
+                    None => {
+                        let now_str = get_now_str();
+                        bot.send_message(chat_id, "🚫 Unknown command!").await?;
+                        println!(
+                            "📙 [{now_str}] Unknown command from user #{}. Command text: {text}",
+                            msg.chat.id
+                        );
+                    }
+                    _ => {}
+                }
             }
         }
     }
@@ -224,6 +248,8 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
     let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
     let action = q.data;
     let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+
+    set_user_dialog_context(chat_id_i64, "NULL").await;
 
     match action {
         Some(act)
@@ -242,10 +268,23 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             }
         }
         Some(act) if act == "custom_charset".to_string() => {
-            println!("action = {act}")
+            set_user_dialog_context(chat_id_i64, "custom_charset").await;
+            bot.send_message(
+                chat_id.clone(),
+                "<i>Please enter your character set below to generate a password
+🔡🔢🔣</i>",
+            )
+            .parse_mode("HTML".parse().unwrap())
+            .await?;
         }
         Some(act) if act == "pwd_len".to_string() => {
-            println!("action = {act}")
+            set_user_dialog_context(chat_id_i64, "pwd_len").await;
+            bot.send_message(
+                chat_id.clone(),
+                "<i>Please enter your password length below🔢</i>",
+            )
+            .parse_mode("HTML".parse().unwrap())
+            .await?;
         }
         Some(act) if act == "generate".to_string() => {
             remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
@@ -261,17 +300,23 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             let pwd = pgen_from_rules.generate(rules.pwd_len as u32);
 
             let mess = bot
-                .send_message(chat_id.clone(), format!("<b><code>{pwd}</code></b>"))
+                .send_message(
+                    chat_id.clone(),
+                    format!("<i>Password is (click to copy): </i><b><code>{pwd}</code></b>"),
+                )
                 .parse_mode("HTML".parse().unwrap())
                 .await?;
             let now_str = get_now_str();
-            println!("✅ [{now_str}] New password for user #{chat_id_i64} was sent.");
+            println!("🎲 [{now_str}] New password for user #{chat_id_i64} was sent.");
             let mess_id: i32 = mess.id.to_string().parse().unwrap();
 
             increase_user_gen_count(chat_id_i64).await;
             set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
         }
-        _ => println!("🚫 Unrecognized callback action!"),
+        _ => {
+            let now_str = get_now_str();
+            println!("📙 [{now_str}] Unrecognized callback action!");
+        }
     }
 
     Ok(())
@@ -295,6 +340,8 @@ async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, id_field
                 ),
             }
         }
-        None => println!("📙 [{now_str}] No records to remove \"{id_field}\" found for user #{chat_id_i64}."),
+        None => println!(
+            "📙 [{now_str}] No records to remove \"{id_field}\" found for user #{chat_id_i64}."
+        ),
     }
 }

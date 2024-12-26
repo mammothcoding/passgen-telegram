@@ -114,13 +114,13 @@ pub mod db_processing {
         q.push(",");
         q.push_bind(from.is_bot);
         q.push(",");
-        q.push_bind(from.first_name);
+        q.push_bind(&from.first_name);
         q.push(",");
-        q.push_bind(from.last_name);
+        q.push_bind(&from.last_name);
         q.push(",");
-        q.push_bind(from.username);
+        q.push_bind(&from.username);
         q.push(",");
-        q.push_bind(from.language_code);
+        q.push_bind(&from.language_code);
         q.push(")");
         let res = q.build().execute(pool).await;
 
@@ -128,8 +128,8 @@ pub mod db_processing {
         match res {
             Ok(_ok) => {
                 println!(
-                    "📗 [{now_str}] Register new user #{chat_id} in DB: {:?}.",
-                    _ok
+                    "👤 [{now_str}] New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
+                    from.first_name, from.last_name, from.username, from.language_code
                 );
                 true
             }
@@ -156,7 +156,6 @@ pub mod db_processing {
                 match parse_to_rules {
                     Ok(_ok) => {
                         println!("📗 [{now_str}] Get Rules for user #{chat_id} is successfully.");
-                        println!("📗 {_ok:#?}");
                         Option::from(_ok)
                     }
                     Err(_err) => {
@@ -248,6 +247,47 @@ pub mod db_processing {
             Ok(_ok) => println!("📗 [{now_str}] Increase gen_count for user #{chat_id}."),
             Err(_err) => println!(
                 "📕 [{now_str}] Error on increase gen_count for user #{chat_id}.: '{_err}'."
+            ),
+        }
+    }
+
+    pub async fn get_user_dialog_context(chat_id: i64) -> Option<String> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT dialog_context from main WHERE id = ");
+        q.push_bind(chat_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool);
+
+        let now_str = get_now_str();
+        match res.await {
+            Ok(_ok) => {
+                println!(
+                    "📗 [{now_str}] Get dialog context for user #{chat_id} successfully completed: {:?}.",
+                    _ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                println!("📙 [{now_str}] Empty result of query get_user_dialog_context: '{_err}'.");
+                None
+            }
+        }
+    }
+
+    pub async fn set_user_dialog_context(chat_id: i64, context: &str) {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET dialog_context = ");
+        q.push_bind(context);
+        q.push(", updated_at = current_timestamp WHERE id = ");
+        q.push_bind(chat_id);
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => println!("📗 [{now_str}] Set dialog context \"{context}\" for user #{chat_id}."),
+            Err(_err) => println!(
+                "📕 [{now_str}] Error on updating dialog context for user #{chat_id} to \"{context}\".: '{_err}'."
             ),
         }
     }
