@@ -3,26 +3,17 @@ pub mod env_processing;
 mod rules;
 mod tg_processing;
 
-use crate::db_processing::db_processing::{
-    check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
-    get_user_dialog_context, increase_user_gen_count, init as db_pool_init, set_last_mess_id,
-    set_user_dialog_context, update_rules,
-};
+use crate::db_processing::db_processing::{check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_dialog_context, increase_user_gen_count, init as db_pool_init, set_last_mess_id, set_user_dialog_context, update_rules};
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
 use rules::rules::Rules;
-use serde::{Deserialize, Deserializer};
-use serde_json::{from_str, json};
-use sqlx::postgres::PgColumn;
-use sqlx::{Column, Row, ValueRef};
 use std::error::Error;
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 use teloxide_core::types::MessageId;
-use teloxide_core::RequestError;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -147,7 +138,7 @@ async fn gen_and_send_main_menu(bot: &Bot, chat_id: ChatId, chat_id_i64: i64) {
     let keyboard = main_menu(chat_id_i64).await;
 
     let mess = bot
-        .send_message(chat_id, "<b>⬇ RULE SETTING AND GEN PWD ⬇</b>")
+        .send_message(chat_id, "<b>⚙ <u>MAMMOTHCODING PASSGEN</u></b>")
         .parse_mode("HTML".parse().unwrap())
         .reply_markup(keyboard)
         .await;
@@ -224,8 +215,46 @@ async fn message_handler(
                         set_user_dialog_context(chat_id_i64, "NULL").await;
                     }
                     Some(context) if context == "pwd_len".to_string() => {
-                        println!("context = {context}");
-                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                        match text.parse::<u64>() {
+                            Ok(mut pwd_len) => {
+                                if pwd_len > 3900 {
+                                    pwd_len = 3900;
+                                }
+                                if pwd_len < 4 {
+                                    pwd_len = 4;
+                                }
+                                let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+                                rules.pwd_len = pwd_len;
+                                let res = update_rules(chat_id_i64, rules).await;
+
+                                let now_str = get_now_str();
+                                if res {
+                                    set_user_dialog_context(chat_id_i64, "NULL").await;
+                                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                                    gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+                                    println!(
+                                        "📗 [{now_str}] Pwd_len for user #{chat_id_i64} successfully set."
+                                    )
+                                } else {
+                                    println!(
+                                        "📕 [{now_str}] Error by set pwd_len for user #{chat_id_i64}!"
+                                    );
+                                }
+                            },
+                            Err(_err) => {
+                                let now_str = get_now_str();
+                                println!(
+                                    "📙 [{now_str}] Unknown type in mess from user #{chat_id_i64}. Received text: {text}"
+                                );
+                                bot
+                                    .send_message(chat_id, "🚫 <i>Wrong number! Please enter your password length again🔢</i>")
+                                    .parse_mode("HTML".parse().unwrap())
+                                    .await?;
+                            }
+                        }
+
+
                     }
                     None => {
                         let now_str = get_now_str();

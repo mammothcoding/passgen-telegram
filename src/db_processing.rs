@@ -1,7 +1,6 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
     use crate::{get_now_str, Rules};
-    use sqlx::postgres::PgRow;
     use sqlx::types::Json;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
