@@ -22,6 +22,13 @@ pub mod rules {
                     if self.custom_charset.is_empty() && !self.enab_strong_usab {
                         self.enab_strong_usab = true;
                     }
+                    if !self.custom_charset.is_empty() {
+                        self.enab_strong_usab = false;
+                        self.set_simple_rule_field("enab_letters", false);
+                        self.set_simple_rule_field("enab_u_letters", false);
+                        self.set_simple_rule_field("enab_num", false);
+                        self.set_simple_rule_field("enab_spec_symbs", false);
+                    }
                 }
                 "enab_strong_usab" => {
                     if self.enab_strong_usab {

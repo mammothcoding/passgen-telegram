@@ -207,12 +207,61 @@ async fn message_handler(
                     }
                 }
             }
+            // Unknown command or text for necessary context
             Err(_) => {
                 let context = get_user_dialog_context(chat_id_i64).await;
                 match context {
                     Some(context) if context == "custom_charset".to_string() => {
-                        println!("context = {context}");
-                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                        match text.parse::<String>() {
+                            Ok(c_chset) => {
+                                if c_chset.len() < 1000 {
+                                    let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+                                    rules.custom_charset = c_chset;
+                                    rules.reconfigure_rules_according_selector(context);
+                                    let set_rules_res = update_rules(chat_id_i64, rules).await;
+
+                                    let now_str = get_now_str();
+                                    if set_rules_res {
+                                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                                        gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+                                        println!(
+                                            "📗 [{now_str}] Custom_charset for user #{chat_id_i64} successfully set."
+                                        )
+                                    } else {
+                                        println!(
+                                            "📕 [{now_str}] Error by set custom_charset for user #{chat_id_i64}!"
+                                        );
+                                        bot.send_message(
+                                            chat_id,
+                                            "⚠️ Sorry, internal service error on set custom charset. Please use the service later.",
+                                        )
+                                            .await?;
+                                    }
+                                } else {
+                                    let now_str = get_now_str();
+                                    println!(
+                                        "📕 [{now_str}] A very large charset size has been passed #{chat_id_i64}!"
+                                    );
+                                    bot.send_message(
+                                        chat_id,
+                                        "<i>⚠️ A very large custom charset size has been passed. Please enter your character set below again 🔡🔢🔣</i>",
+                                    )
+                                        .parse_mode("HTML".parse().unwrap())
+                                        .await?;
+                                }
+                            },
+                            Err(_err) => {
+                                let now_str = get_now_str();
+                                println!(
+                                    "📙 [{now_str}] Error on parsing mess for set custom_charset from user #{chat_id_i64}. Received text: {text}"
+                                );
+                                bot
+                                    .send_message(chat_id, "⚠️ Sorry, internal service error on set custom charset. Please use the service later.")
+                                    .await?;
+                            }
+                        }
                     }
                     Some(context) if context == "pwd_len".to_string() => {
                         match text.parse::<u64>() {
@@ -225,10 +274,10 @@ async fn message_handler(
                                 }
                                 let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
                                 rules.pwd_len = pwd_len;
-                                let res = update_rules(chat_id_i64, rules).await;
+                                let set_rules_res = update_rules(chat_id_i64, rules).await;
 
                                 let now_str = get_now_str();
-                                if res {
+                                if set_rules_res {
                                     set_user_dialog_context(chat_id_i64, "NULL").await;
                                     remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
                                     remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
@@ -240,6 +289,11 @@ async fn message_handler(
                                     println!(
                                         "📕 [{now_str}] Error by set pwd_len for user #{chat_id_i64}!"
                                     );
+                                    bot.send_message(
+                                        chat_id,
+                                        "⚠️ Sorry, internal service error on set password length. Please use the service later.",
+                                    )
+                                        .await?;
                                 }
                             },
                             Err(_err) => {
@@ -253,8 +307,6 @@ async fn message_handler(
                                     .await?;
                             }
                         }
-
-
                     }
                     None => {
                         let now_str = get_now_str();
@@ -297,14 +349,27 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             }
         }
         Some(act) if act == "custom_charset".to_string() => {
-            set_user_dialog_context(chat_id_i64, "custom_charset").await;
-            bot.send_message(
-                chat_id.clone(),
-                "<i>Please enter your character set below to generate a password
+            if rules.custom_charset == "" {
+                set_user_dialog_context(chat_id_i64, "custom_charset").await;
+                bot.send_message(
+                    chat_id.clone(),
+                    "<i>Please enter your character set below to generate a password
 🔡🔢🔣</i>",
-            )
-            .parse_mode("HTML".parse().unwrap())
-            .await?;
+                )
+                    .parse_mode("HTML".parse().unwrap())
+                    .await?;
+            } else {
+                rules.custom_charset = "".to_string();
+                rules.reconfigure_rules_according_selector(act.clone());
+                let set_rules_res = update_rules(chat_id_i64, rules).await;
+                if set_rules_res {
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                    gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
+                }
+            }
+
+
         }
         Some(act) if act == "pwd_len".to_string() => {
             set_user_dialog_context(chat_id_i64, "pwd_len").await;
