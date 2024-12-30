@@ -18,9 +18,30 @@ use teloxide_core::types::MessageId;
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
 enum Command {
-    /// Select rules and generate password.
+    ///
+    /// 🔏 Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
+    ///
+    /// 📌 You can create a regular password,
+    /// choosing in the rules the presence of small and capital letters, numbers, special characters.
+    ///
+    /// 📌 You can create a strong and usability password:
+    /// Including all characters, but
+    /// the first position in the password is a capital or small letter,
+    /// the last position is the symbol. Excluded ambiguous characters "0oOiIlL1".
+    /// 🔸 If this rule is enabled, the other consistency rules of the generating are not taken,
+    /// except for a rule "custom charset".
+    ///
+    /// 📌 You can create a set from your custom charset:
+    /// 🔸 This set of characters will exclude all other rules except for a rule "strong & usability password".
+    /// ⚙️ If "strong & usability password" on too then you can generate combined strong and usability result with custom charset.
+    ///
+    /// 📌 You can specify the required password length of not less than 4 and not more than 3900.
+    ///
+    /// 🦀 Made with Rust.
+    /// 🔗 Homepage of this project: "https://github.com/mammothcoding/passgen-telegram".
+    ///
     Help,
-    /// Main menu
+    /// 📱 Main menu
     Start,
 }
 
@@ -169,12 +190,16 @@ async fn message_handler(
 
         match BotCommands::parse(text, me.username()) {
             Ok(Command::Help) => {
+                let now_str = get_now_str();
+                println!("📗 [{now_str}] User #{chat_id_i64} enter command /Help.");
+
                 bot.send_message(msg.chat.id, Command::descriptions().to_string())
                     .await?;
                 set_user_dialog_context(chat_id_i64, "NULL").await;
             }
             Ok(Command::Start) => {
                 let now_str = get_now_str();
+                println!("📗 [{now_str}] User #{chat_id_i64} enter command /Start.");
 
                 if check_user_rec_avail(chat_id_i64).await {
                     gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
@@ -308,7 +333,8 @@ async fn message_handler(
                             }
                         }
                     }
-                    None => {
+                    None => {}
+                    _ => {
                         let now_str = get_now_str();
                         bot.send_message(chat_id, "🚫 Unknown command!").await?;
                         println!(
@@ -316,7 +342,6 @@ async fn message_handler(
                             msg.chat.id
                         );
                     }
-                    _ => {}
                 }
             }
         }
