@@ -3,7 +3,11 @@ pub mod env_processing;
 mod rules;
 mod tg_processing;
 
-use crate::db_processing::db_processing::{check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_dialog_context, increase_user_gen_count, init as db_pool_init, set_last_mess_id, set_user_dialog_context, update_rules};
+use crate::db_processing::db_processing::{
+    check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
+    get_user_dialog_context, increase_user_gen_count, init as db_pool_init, set_last_mess_id,
+    set_user_dialog_context, update_rules,
+};
 use crate::env_processing::env_processing::DotEnv;
 use log::*;
 use passgenlib::Passgen;
@@ -13,7 +17,7 @@ use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
-use teloxide_core::types::MessageId;
+use teloxide_core::types::{KeyboardButton, KeyboardMarkup, MessageId, ReplyMarkup};
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -21,21 +25,21 @@ enum Command {
     ///
     /// 🔏 Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
     ///
-    /// 📌 You can create a regular password,
+    /// 🔹 You can create a regular password,
     /// choosing in the rules the presence of small and capital letters, numbers, special characters.
     ///
-    /// 📌 You can create a strong and usability password:
+    /// 🔹 You can create a strong and usability password:
     /// Including all characters, but
     /// the first position in the password is a capital or small letter,
     /// the last position is the symbol. Excluded ambiguous characters "0oOiIlL1".
     /// 🔸 If this rule is enabled, the other consistency rules of the generating are not taken,
     /// except for a rule "custom charset".
     ///
-    /// 📌 You can create a set from your custom charset:
+    /// 🔹 You can create a set from your custom charset:
     /// 🔸 This set of characters will exclude all other rules except for a rule "strong & usability password".
     /// ⚙️ If "strong & usability password" on too then you can generate combined strong and usability result with custom charset.
     ///
-    /// 📌 You can specify the required password length of not less than 4 and not more than 3900.
+    /// 🔹 You can specify the required password length of not less than 4 and not more than 3900.
     ///
     /// 🦀 Made with Rust.
     /// 🔗 Homepage of this project: "https://github.com/mammothcoding/passgen-telegram".
@@ -202,6 +206,8 @@ async fn message_handler(
                 println!("📗 [{now_str}] User #{chat_id_i64} enter command /Start.");
 
                 if check_user_rec_avail(chat_id_i64).await {
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
                     gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                     set_user_dialog_context(chat_id_i64, "NULL").await;
                 } else {
@@ -232,7 +238,7 @@ async fn message_handler(
                     }
                 }
             }
-            // Unknown command or text for necessary context
+            // Unknown command or text for necessary context or necessary text action
             Err(_) => {
                 let context = get_user_dialog_context(chat_id_i64).await;
                 match context {
@@ -240,7 +246,8 @@ async fn message_handler(
                         match text.parse::<String>() {
                             Ok(c_chset) => {
                                 if c_chset.len() < 1000 {
-                                    let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+                                    let mut rules: Rules =
+                                        get_pgen_rules(chat_id_i64).await.unwrap();
                                     rules.custom_charset = c_chset;
                                     rules.reconfigure_rules_according_selector(context);
                                     let set_rules_res = update_rules(chat_id_i64, rules).await;
@@ -248,8 +255,20 @@ async fn message_handler(
                                     let now_str = get_now_str();
                                     if set_rules_res {
                                         set_user_dialog_context(chat_id_i64, "NULL").await;
-                                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-                                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                                        remove_prev_mess(
+                                            &bot,
+                                            chat_id,
+                                            chat_id_i64,
+                                            "last_gen_mess_id",
+                                        )
+                                        .await;
+                                        remove_prev_mess(
+                                            &bot,
+                                            chat_id,
+                                            chat_id_i64,
+                                            "last_menu_mess_id",
+                                        )
+                                        .await;
                                         gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                                         println!(
                                             "📗 [{now_str}] Custom_charset for user #{chat_id_i64} successfully set."
@@ -276,7 +295,7 @@ async fn message_handler(
                                         .parse_mode("HTML".parse().unwrap())
                                         .await?;
                                 }
-                            },
+                            }
                             Err(_err) => {
                                 let now_str = get_now_str();
                                 println!(
@@ -304,8 +323,20 @@ async fn message_handler(
                                 let now_str = get_now_str();
                                 if set_rules_res {
                                     set_user_dialog_context(chat_id_i64, "NULL").await;
-                                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-                                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                                    remove_prev_mess(
+                                        &bot,
+                                        chat_id,
+                                        chat_id_i64,
+                                        "last_gen_mess_id",
+                                    )
+                                    .await;
+                                    remove_prev_mess(
+                                        &bot,
+                                        chat_id,
+                                        chat_id_i64,
+                                        "last_menu_mess_id",
+                                    )
+                                    .await;
                                     gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                                     println!(
                                         "📗 [{now_str}] Pwd_len for user #{chat_id_i64} successfully set."
@@ -320,7 +351,7 @@ async fn message_handler(
                                     )
                                         .await?;
                                 }
-                            },
+                            }
                             Err(_err) => {
                                 let now_str = get_now_str();
                                 println!(
@@ -335,12 +366,17 @@ async fn message_handler(
                     }
                     None => {}
                     _ => {
-                        let now_str = get_now_str();
-                        bot.send_message(chat_id, "🚫 Unknown command!").await?;
-                        println!(
-                            "📙 [{now_str}] Unknown command from user #{}. Command text: {text}",
-                            msg.chat.id
-                        );
+                        if text == "🧹 pwd" {
+                            remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                            bot.delete_message(chat_id, msg.id).await?;
+                        } else {
+                            let now_str = get_now_str();
+                            bot.send_message(chat_id, "🚫 Unknown command!").await?;
+                            println!(
+                                "📙 [{now_str}] Unknown command from user #{}. Command text: {text}",
+                                msg.chat.id
+                            );
+                        }
                     }
                 }
             }
@@ -381,8 +417,8 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
                     "<i>Please enter your character set below to generate a password
 🔡🔢🔣</i>",
                 )
-                    .parse_mode("HTML".parse().unwrap())
-                    .await?;
+                .parse_mode("HTML".parse().unwrap())
+                .await?;
             } else {
                 rules.custom_charset = "".to_string();
                 rules.reconfigure_rules_according_selector(act.clone());
@@ -393,8 +429,6 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
                     gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                 }
             }
-
-
         }
         Some(act) if act == "pwd_len".to_string() => {
             set_user_dialog_context(chat_id_i64, "pwd_len").await;
@@ -424,6 +458,11 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
                     format!("<i>Password is (click to copy): </i><b><code>{pwd}</code></b>"),
                 )
                 .parse_mode("HTML".parse().unwrap())
+                .reply_markup(
+                    KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
+                        .one_time_keyboard()
+                        .resize_keyboard(),
+                )
                 .await?;
             let now_str = get_now_str();
             println!("🎲 [{now_str}] New password for user #{chat_id_i64} was sent.");
