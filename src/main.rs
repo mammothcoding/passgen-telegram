@@ -1,7 +1,9 @@
 mod db_processing;
 pub mod env_processing;
+mod log;
 mod rules;
 mod tg_processing;
+mod user;
 
 use crate::db_processing::db_processing::{
     check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
@@ -9,7 +11,6 @@ use crate::db_processing::db_processing::{
     set_user_dialog_context, update_rules,
 };
 use crate::env_processing::env_processing::DotEnv;
-use log::*;
 use passgenlib::Passgen;
 use rules::rules::Rules;
 use std::error::Error;
@@ -17,7 +18,7 @@ use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
-use teloxide_core::types::{KeyboardButton, KeyboardMarkup, MessageId, ReplyMarkup};
+use teloxide_core::types::{KeyboardButton, KeyboardMarkup, MessageId};
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -191,6 +192,7 @@ async fn message_handler(
     if let Some(text) = msg.text() {
         let chat_id: ChatId = (&msg.chat.id).to_owned();
         let chat_id_i64: i64 = chat_id.to_string().parse::<i64>().unwrap();
+        let bot_id_i64: i64 = (&me.id).to_owned().to_string().parse::<i64>().unwrap();
 
         match BotCommands::parse(text, me.username()) {
             Ok(Command::Help) => {
@@ -213,7 +215,7 @@ async fn message_handler(
                 } else {
                     match msg.from {
                         Some(from) => {
-                            let cr_result = cr_new_user_rec(chat_id_i64, from).await;
+                            let cr_result = cr_new_user_rec(chat_id_i64, bot_id_i64, from).await;
                             if cr_result {
                                 gen_and_send_main_menu(&bot, chat_id, chat_id_i64).await;
                                 set_user_dialog_context(chat_id_i64, "NULL").await;

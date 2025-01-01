@@ -1,12 +1,9 @@
 CREATE TABLE IF NOT EXISTS main (
-    id int8 PRIMARY KEY,
-    last_menu_mess_id int4,
-    last_gen_mess_id int4,
-    is_bot bool,
-    first_name varchar,
-    last_name varchar,
-    username varchar,
-    language_code varchar,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    chat_id int8,
+    bot_id  int8,
+    user_data jsonb not null,
+    app_lang varchar not null default 'EN',
     pgen_rules jsonb not null default '{
       "enab_letters": false,
       "enab_u_letters": false,
@@ -17,9 +14,11 @@ CREATE TABLE IF NOT EXISTS main (
       "pwd_len": 8
     }'::jsonb,
     gen_count int8 default 0,
+    last_menu_mess_id int4,
+    last_gen_mess_id int4,
     dialog_context varchar,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
 
-comment on column main.id is 'ChatId or UserId of requester from Telegram.';
+comment on column main.gen_count is 'Total number of generated passwords.';

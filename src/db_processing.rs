@@ -6,6 +6,7 @@ pub mod db_processing {
     use std::process;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
+    use crate::user::user::User as user_data;
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
@@ -82,7 +83,7 @@ pub mod db_processing {
 
     pub async fn check_user_rec_avail(chat_id: i64) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
-        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("SELECT id from main WHERE id = ");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("SELECT id from main WHERE chat_id = ");
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
@@ -103,23 +104,25 @@ pub mod db_processing {
         }
     }
 
-    pub async fn cr_new_user_rec(chat_id: i64, from: User) -> bool {
+    pub async fn cr_new_user_rec(chat_id: i64, bot_id: i64, from: User) -> bool {
+        let user: user_data = user_data {
+            username: from.username.unwrap_or("".to_string()),
+            first_name: from.first_name,
+            last_name: from.last_name.unwrap_or("".to_string()),
+            language_code: from.language_code.unwrap_or("".to_string()),
+            is_bot: from.is_bot,
+        };
+
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
             "INSERT INTO main (
-            id, is_bot, first_name, last_name, username, language_code) VALUES (",
+            chat_id, bot_id, user_data) VALUES (",
         );
         q.push_bind(chat_id);
         q.push(",");
-        q.push_bind(from.is_bot);
+        q.push_bind(bot_id);
         q.push(",");
-        q.push_bind(&from.first_name);
-        q.push(",");
-        q.push_bind(&from.last_name);
-        q.push(",");
-        q.push_bind(&from.username);
-        q.push(",");
-        q.push_bind(&from.language_code);
+        q.push_bind(Json(&user));
         q.push(")");
         let res = q.build().execute(pool).await;
 
@@ -128,7 +131,7 @@ pub mod db_processing {
             Ok(_ok) => {
                 println!(
                     "👤 [{now_str}] New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
-                    from.first_name, from.last_name, from.username, from.language_code
+                    user.first_name, user.last_name, user.username, user.language_code
                 );
                 true
             }
@@ -142,7 +145,7 @@ pub mod db_processing {
     pub async fn get_pgen_rules(chat_id: i64) -> Option<Rules> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT pgen_rules as Json from main WHERE id = ");
+            QueryBuilder::new("SELECT pgen_rules as Json from main WHERE chat_id = ");
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool).await;
@@ -173,7 +176,7 @@ pub mod db_processing {
     pub async fn get_last_mess_id(chat_id: i64, id_field: &str) -> Option<i32> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new(format!("SELECT {id_field} from main WHERE id = "));
+            QueryBuilder::new(format!("SELECT {id_field} from main WHERE chat_id = "));
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
@@ -200,7 +203,7 @@ pub mod db_processing {
             QueryBuilder::new(format!("UPDATE main SET {id_field} = "));
         q.push_bind(mess_id);
         q.push(", updated_at = current_timestamp");
-        q.push(" WHERE id = ");
+        q.push(" WHERE chat_id = ");
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
@@ -215,7 +218,7 @@ pub mod db_processing {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET pgen_rules = ");
         q.push_bind(Json(rules));
-        q.push(" WHERE id = ");
+        q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
@@ -237,7 +240,7 @@ pub mod db_processing {
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
             "UPDATE main SET gen_count = gen_count + 1, updated_at = current_timestamp",
         );
-        q.push(" WHERE id = ");
+        q.push(" WHERE chat_id = ");
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
@@ -253,7 +256,7 @@ pub mod db_processing {
     pub async fn get_user_dialog_context(chat_id: i64) -> Option<String> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT dialog_context from main WHERE id = ");
+            QueryBuilder::new("SELECT dialog_context from main WHERE chat_id = ");
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
@@ -278,7 +281,7 @@ pub mod db_processing {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET dialog_context = ");
         q.push_bind(context);
-        q.push(", updated_at = current_timestamp WHERE id = ");
+        q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
