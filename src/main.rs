@@ -14,11 +14,13 @@ use crate::env_processing::env_processing::DotEnv;
 use passgenlib::Passgen;
 use rules::rules::Rules;
 use std::error::Error;
+use ::log::{debug, error, info, trace, warn};
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 use teloxide_core::types::{KeyboardButton, KeyboardMarkup, MessageId};
+use crate::log::log::init as log_init;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -51,15 +53,24 @@ enum Command {
 }
 
 pub fn get_now_str() -> String {
-    chrono::Local::now().format("%d-%b-%y %X%.6f").to_string()
+    chrono::Local::now().format("%d-%b-%y %X%.6f %Z").to_string()
 }
 
 #[tokio::main]
 async fn main() {
-    //Env
+    // Env
     let env_data = DotEnv::parse_dot_env();
 
-    //DB
+    // Log
+    log_init(&env_data);
+    warn!("HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP ");
+    error!("error");
+    warn!("warn");
+    info!("info");
+    debug!("debug");
+    trace!("trace");
+
+    // DB
     db_pool_init(&env_data).await;
 
     // Setup listener.
@@ -132,7 +143,7 @@ async fn main_menu(chat_id: i64) -> InlineKeyboardMarkup {
             "✅ custom charset. Press to set."
         }
     };
-    let pwd_len = &format!("{}  ◅password length. Press to edit.", rules.pwd_len)[..];
+    let pwd_len = &format!("password length 🟰 {} . Press to edit.", rules.pwd_len)[..];
 
     let inline_btns = [
         [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
