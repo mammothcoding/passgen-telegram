@@ -11,16 +11,16 @@ use crate::db_processing::db_processing::{
     set_user_dialog_context, update_rules,
 };
 use crate::env_processing::env_processing::DotEnv;
+use crate::log::log::init as log_init;
+use ::log::{debug, error, info, trace, warn};
 use passgenlib::Passgen;
 use rules::rules::Rules;
 use std::error::Error;
-use ::log::{debug, error, info, trace, warn};
 use teloxide::requests::Requester;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, Me};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks, utils::command::BotCommands};
 use teloxide_core::types::{KeyboardButton, KeyboardMarkup, MessageId};
-use crate::log::log::init as log_init;
 
 #[derive(BotCommands)]
 #[command(rename_rule = "lowercase")]
@@ -53,7 +53,9 @@ enum Command {
 }
 
 pub fn get_now_str() -> String {
-    chrono::Local::now().format("%d-%b-%y %X%.6f %Z").to_string()
+    chrono::Local::now()
+        .format("%d-%b-%y %X%.6f %Z")
+        .to_string()
 }
 
 #[tokio::main]
@@ -63,12 +65,6 @@ async fn main() {
 
     // Log
     log_init(&env_data);
-    warn!("HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP HOP ");
-    error!("error");
-    warn!("warn");
-    info!("info");
-    debug!("debug");
-    trace!("trace");
 
     // DB
     db_pool_init(&env_data).await;
@@ -402,6 +398,11 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
     let chat_id: ChatId = q.message.clone().unwrap().chat().id;
     let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
     let action = q.data;
+
+    if !check_user_rec_avail(chat_id_i64).await {
+        return Ok(());
+    }
+
     let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
 
     set_user_dialog_context(chat_id_i64, "NULL").await;

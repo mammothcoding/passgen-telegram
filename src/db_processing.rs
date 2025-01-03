@@ -1,12 +1,12 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
+    use crate::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use sqlx::types::Json;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
-    use crate::user::user::User as user_data;
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
@@ -83,7 +83,8 @@ pub mod db_processing {
 
     pub async fn check_user_rec_avail(chat_id: i64) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
-        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("SELECT id from main WHERE chat_id = ");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT id from main WHERE chat_id = ");
         q.push_bind(chat_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
