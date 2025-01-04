@@ -2,6 +2,7 @@ pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
     use crate::user::user::User as user_data;
     use crate::{get_now_str, Rules};
+    use log::{debug, error, info, warn};
     use sqlx::types::Json;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
@@ -22,9 +23,10 @@ pub mod db_processing {
         if let Err(_err) = &connection {
             let now_str = get_now_str();
             println!(
-                "🚫 [{now_str}] Error on connection to Postgres: '{}'.",
+                "[{now_str}] 🚫 - Error on connection to Postgres: '{}'.",
                 _err
             );
+            error!("Error on connection to Postgres: '{}'.", _err);
             process::exit(1);
         }
 
@@ -32,21 +34,21 @@ pub mod db_processing {
             .unwrap()
             .execute(format!(r#"CREATE DATABASE "{}";"#, env_data.db_name).as_str())
             .await;
-        if let Err(_err) = &check_or_create_db_res {
-            let now_str = get_now_str();
-            if _err.to_string().contains("already exists") {
-                println!("✅ [{now_str}] DB '{}' is exists.", env_data.db_name);
-            } else {
-                println!("🚫 [{now_str}] Error check_or_create_db: '{}'.", _err);
-                process::exit(1);
-            }
-        }
-        if check_or_create_db_res.is_ok() {
-            let now_str = get_now_str();
-            println!(
-                "✅ [{now_str}] DB '{}' doesn't exist. Create new DB successfully.",
+        match check_or_create_db_res {
+            Ok(_) => debug!(
+                "DB '{}' doesn't exist. Create new DB successfully.",
                 env_data.db_name
-            );
+            ),
+            Err(err) => {
+                let now_str = get_now_str();
+                if err.to_string().contains("already exists") {
+                    debug!("DB '{}' is already exists.", env_data.db_name);
+                } else {
+                    println!("[{now_str}] 🚫 - Error check_or_create_db: '{}'.", err);
+                    error!("Error check_or_create_db: '{}'.", err);
+                    process::exit(1);
+                }
+            }
         }
 
         let connection_pool = PgPool::connect(
@@ -63,22 +65,27 @@ pub mod db_processing {
         .await;
         if let Err(_err) = &connection_pool {
             let now_str = get_now_str();
-            println!("🚫 [{now_str}] Error on PgPool::connect: '{}'", _err);
+            println!("[{now_str}] 🚫 - Error on PgPool::connect: '{}'.", _err);
+            error!("Error on PgPool::connect: '{}'.", _err);
             process::exit(1);
         }
-        let now_str = get_now_str();
-        println!("✅ [{now_str}] Connect to '{}' DB.", env_data.db_name);
+        debug!("Connected to '{}' DB.", env_data.db_name);
 
         let pool = connection_pool.unwrap();
         let migr_res = sqlx::migrate!("./migrations").run(&pool).await;
         let now_str = get_now_str();
         if let Err(_err) = migr_res {
-            println!("🚫 [{now_str}] Error on migrates: '{}'.", _err);
+            println!("[{now_str}] 🚫 - Migration error: '{}'.", _err);
+            error!("Migration error: '{}'.", _err);
             process::exit(1);
         }
-        println!("✅ [{now_str}] DB migrating status is OK.");
+        debug!("DB migrations OK.");
 
         DB_POOL.get_or_init(|| async { pool }).await;
+
+        let now_str = get_now_str();
+        println!("[{now_str}] ✅ - DB init is OK.");
+        info!("✅ DB init is OK.");
     }
 
     pub async fn check_user_rec_avail(chat_id: i64) -> bool {
@@ -89,17 +96,16 @@ pub mod db_processing {
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
-        let now_str = get_now_str();
         match res.await {
             Ok(_ok) => {
-                println!(
-                    "📗 [{now_str}] Query check_user_rec_avail successfully completed: {:?}.",
+                debug!(
+                    "📗 Query check_user_rec_avail successfully completed: {:?}.",
                     _ok
                 );
                 true
             }
             Err(_err) => {
-                println!("📙 [{now_str}] Empty result of query check_user_rec_avail: '{_err}'.");
+                debug!("📙 Empty result of query check_user_rec_avail: '{_err}'.");
                 false
             }
         }
@@ -131,13 +137,18 @@ pub mod db_processing {
         match res {
             Ok(_ok) => {
                 println!(
-                    "👤 [{now_str}] New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
+                    "[{now_str}] 👤 - New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
+                    user.first_name, user.last_name, user.username, user.language_code
+                );
+                info!(
+                    "👤 New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
                     user.first_name, user.last_name, user.username, user.language_code
                 );
                 true
             }
             Err(_err) => {
-                println!("📕 [{now_str}] Error on reg new user #{chat_id} in DB: '{_err}'.");
+                println!("[{now_str}] 📕 - Error on reg new user #{chat_id} in DB: '{_err}'.");
+                error!("📕 Error on reg new user #{chat_id} in DB: '{_err}'.");
                 false
             }
         }
@@ -158,17 +169,21 @@ pub mod db_processing {
                 let parse_to_rules = serde_json::from_str::<Rules>(pgen_rules_json);
                 match parse_to_rules {
                     Ok(_ok) => {
-                        println!("📗 [{now_str}] Get Rules for user #{chat_id} is successfully.");
+                        debug!("📗 Get Rules for user #{chat_id} is successfully.");
                         Option::from(_ok)
                     }
                     Err(_err) => {
-                        println!("📕 Get Rules for user #{chat_id} has error: {}", _err);
+                        println!("[{now_str}] 📕 - Get pgen_rules & parse to Rules for user #{chat_id} has error: {}", _err);
+                        error!(
+                            "📕 Get pgen_rules & parse to Rules for user #{chat_id} has error: {}",
+                            _err
+                        );
                         None
                     }
                 }
             }
             Err(_err) => {
-                println!("📙 [{now_str}] Empty result of query get_pgen_rules: '{_err}'.");
+                error!("📙 Empty result of query get_pgen_rules: '{_err}'.");
                 None
             }
         }
@@ -182,17 +197,16 @@ pub mod db_processing {
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
-        let now_str = get_now_str();
         match res.await {
             Ok(_ok) => {
-                println!(
-                    "📗 [{now_str}] Query get_last_user_mess_id successfully completed: {:?}.",
+                debug!(
+                    "📗 Query get_last_user_mess_id successfully completed: {:?}.",
                     _ok
                 );
                 _ok.get(0)
             }
             Err(_err) => {
-                println!("📙 [{now_str}] Empty result of query get_last_user_mess_id: '{_err}'.");
+                debug!("📙 Empty result of query get_last_user_mess_id: '{_err}'.");
                 None
             }
         }
@@ -208,10 +222,9 @@ pub mod db_processing {
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
-        let now_str = get_now_str();
         match res {
-            Ok(_ok) => println!("📗 [{now_str}] Register new mess id #{mess_id} to {id_field} field."),
-            Err(_err) => println!("📕 [{now_str}] Error on query of register new mess id #{mess_id} to {id_field} field: '{_err}'."),
+            Ok(_ok) => debug!("📗 Register new mess id #{mess_id} to {id_field} field."),
+            Err(_err) => error!("📕 Error on query of register new mess id #{mess_id} to {id_field} field: '{_err}'."),
         }
     }
 
@@ -226,11 +239,14 @@ pub mod db_processing {
         let now_str = get_now_str();
         match res {
             Ok(_ok) => {
-                println!("📗 [{now_str}] Rules has been updated for user #{chat_id}.");
+                debug!("📗 Rules has been updated for user #{chat_id}.");
                 true
             }
             Err(_err) => {
-                println!("📕 [{now_str}] Error on updating rules for user #{chat_id}.: '{_err}'.");
+                println!(
+                    "[{now_str}] 📕 - Error on updating rules for user #{chat_id}.: '{_err}'."
+                );
+                error!("📕 Error on updating rules for user #{chat_id}.: '{_err}'.");
                 false
             }
         }
@@ -245,12 +261,9 @@ pub mod db_processing {
         q.push_bind(chat_id);
         let res = q.build().execute(pool).await;
 
-        let now_str = get_now_str();
         match res {
-            Ok(_ok) => println!("📗 [{now_str}] Increase gen_count for user #{chat_id}."),
-            Err(_err) => println!(
-                "📕 [{now_str}] Error on increase gen_count for user #{chat_id}.: '{_err}'."
-            ),
+            Ok(_ok) => debug!("📗 Increase gen_count for user #{chat_id}."),
+            Err(_err) => warn!("📕 Error on increase gen_count for user #{chat_id}.: '{_err}'."),
         }
     }
 
@@ -262,17 +275,16 @@ pub mod db_processing {
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
-        let now_str = get_now_str();
         match res.await {
             Ok(_ok) => {
-                println!(
-                    "📗 [{now_str}] Get dialog context for user #{chat_id} successfully completed: {:?}.",
+                debug!(
+                    "📗 Get dialog context for user #{chat_id} successfully completed: {:?}.",
                     _ok
                 );
                 _ok.get(0)
             }
             Err(_err) => {
-                println!("📙 [{now_str}] Empty result of query get_user_dialog_context: '{_err}'.");
+                debug!("📙 Empty result of query get_user_dialog_context: '{_err}'.");
                 None
             }
         }
@@ -288,10 +300,15 @@ pub mod db_processing {
 
         let now_str = get_now_str();
         match res {
-            Ok(_ok) => println!("📗 [{now_str}] Set dialog context \"{context}\" for user #{chat_id}."),
-            Err(_err) => println!(
-                "📕 [{now_str}] Error on updating dialog context for user #{chat_id} to \"{context}\".: '{_err}'."
-            ),
+            Ok(_ok) => debug!("📗 Set dialog context \"{context}\" for user #{chat_id}."),
+            Err(_err) => {
+                println!(
+                    "[{now_str}] 📕 - Error on updating dialog context for user #{chat_id} to \"{context}\".: '{_err}'."
+                );
+                error!(
+                    "📕 Error on updating dialog context for user #{chat_id} to \"{context}\".: '{_err}'."
+                );
+            }
         }
     }
 }

@@ -1,9 +1,9 @@
 pub mod env_processing {
     use crate::get_now_str;
     use env_file_reader::read_file;
+    use log::{error, info};
     use std::collections::HashMap;
     use std::{env, process};
-    use log::{error, info};
 
     pub struct DotEnv {
         pub tg_bot_token: String,
@@ -85,8 +85,13 @@ pub mod env_processing {
                 ),
                 db_host: get_env_var("DB_HOST", &env_variables, "", &mut missing_keys),
                 db_port: {
-                    match get_env_var("DB_PORT", &env_variables, default_db_port, &mut missing_keys)
-                        .parse::<u32>()
+                    match get_env_var(
+                        "DB_PORT",
+                        &env_variables,
+                        default_db_port,
+                        &mut missing_keys,
+                    )
+                    .parse::<u32>()
                     {
                         Ok(port) => port,
                         Err(_) => {
@@ -116,8 +121,13 @@ pub mod env_processing {
                     &mut missing_keys,
                 ),
                 log_trigger_file_size: {
-                    match get_env_var("LOG_TRIGGER_FILE_SIZE", &env_variables, default_log_trigger_file_size, &mut missing_keys)
-                        .parse::<u64>()
+                    match get_env_var(
+                        "LOG_TRIGGER_FILE_SIZE",
+                        &env_variables,
+                        default_log_trigger_file_size,
+                        &mut missing_keys,
+                    )
+                    .parse::<u64>()
                     {
                         Ok(size) => size,
                         Err(_) => {
@@ -127,8 +137,13 @@ pub mod env_processing {
                     }
                 },
                 log_files_count: {
-                    match get_env_var("LOG_FILES_COUNT", &env_variables, default_log_files_count, &mut missing_keys)
-                        .parse::<u32>()
+                    match get_env_var(
+                        "LOG_FILES_COUNT",
+                        &env_variables,
+                        default_log_files_count,
+                        &mut missing_keys,
+                    )
+                    .parse::<u32>()
                     {
                         Ok(count) => count,
                         Err(_) => {
@@ -137,13 +152,18 @@ pub mod env_processing {
                         }
                     }
                 },
-                log_files_path: get_env_var("LOG_FILES_PATH", &env_variables, default_log_files_path, &mut missing_keys),
+                log_files_path: get_env_var(
+                    "LOG_FILES_PATH",
+                    &env_variables,
+                    default_log_files_path,
+                    &mut missing_keys,
+                ),
             };
 
             let now_str = get_now_str();
             if missing_keys.is_empty() {
-                println!("[{now_str}] ✅ - .env init is OK");
-                info!("✅ - .env init is OK");
+                println!("[{now_str}] ✅ - .env init is OK.");
+                info!("✅ - .env init is OK.");
                 res
             } else {
                 println!("[{now_str}] 🚫 - Missing .env keys:");

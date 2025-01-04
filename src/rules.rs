@@ -1,5 +1,5 @@
 pub mod rules {
-    use crate::get_now_str;
+    use log::debug;
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct Rules {
@@ -65,8 +65,7 @@ pub mod rules {
                 }
             }
 
-            let now_str = get_now_str();
-            println!("📗 [{now_str}] Reconfiguring rules by action {act}");
+            debug!("📗 Reconfiguring rules by action {act} successfully.");
         }
 
         pub fn get_simple_rule_field(&self, field: &str) -> bool {
