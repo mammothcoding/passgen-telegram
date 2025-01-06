@@ -70,7 +70,7 @@ tower-http = { version = "0.5.2", features = ["trace"], optional = true }
 rand = { version = "0.8.5", optional = true }
 
 env-file-reader = "=0.3.0"
-passgen-lib = "1.0.4"
+passgen-lib = "1.1.0"
 chrono = "0.4.38"
 console = "0.15.8"
 log = "0.4"

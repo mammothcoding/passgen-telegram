@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS main (
     chat_id int8,
     bot_id  int8,
     user_data jsonb not null,
-    app_lang varchar not null default 'EN',
+    app_lang varchar not null default 'en',
     pgen_rules jsonb not null default '{
       "enab_letters": false,
       "enab_u_letters": false,

@@ -311,4 +311,49 @@ pub mod db_processing {
             }
         }
     }
+
+    pub async fn get_user_app_lang(chat_id: i64) -> Option<String> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT app_lang from main WHERE chat_id = ");
+        q.push_bind(chat_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool);
+
+        match res.await {
+            Ok(_ok) => {
+                debug!(
+                    "📗 Get app_lang for user #{chat_id} successfully completed: {:?}.",
+                    &_ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                debug!("📙 Empty result of query app_lang: '{_err}'.");
+                None
+            }
+        }
+    }
+
+    pub async fn set_user_app_lang(chat_id: i64, app_lang: &str) {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET app_lang = ");
+        q.push_bind(app_lang);
+        q.push(", updated_at = current_timestamp WHERE chat_id = ");
+        q.push_bind(chat_id);
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => debug!("📗 Set app_lang \"{app_lang}\" for user #{chat_id}."),
+            Err(_err) => {
+                println!(
+                    "[{now_str}] 📕 - Error on updating app_lang for user #{chat_id} to \"{app_lang}\".: '{_err}'."
+                );
+                error!(
+                    "📕 Error on updating app_lang for user #{chat_id} to \"{app_lang}\".: '{_err}'."
+                );
+            }
+        }
+    }
 }
