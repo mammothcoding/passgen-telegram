@@ -1,5 +1,6 @@
 pub mod db_processing {
     use crate::env_processing::env_processing::DotEnv;
+    use crate::lang_processing::lang_processing::obtain_user_lang_code;
     use crate::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use log::{debug, error, info, warn};
@@ -120,16 +121,20 @@ pub mod db_processing {
             is_bot: from.is_bot,
         };
 
+        let user_lang_code = obtain_user_lang_code(&user.language_code[..]);
+
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
             "INSERT INTO main (
-            chat_id, bot_id, user_data) VALUES (",
+            chat_id, bot_id, user_data, app_lang) VALUES (",
         );
         q.push_bind(chat_id);
         q.push(",");
         q.push_bind(bot_id);
         q.push(",");
         q.push_bind(Json(&user));
+        q.push(",");
+        q.push_bind(user_lang_code);
         q.push(")");
         let res = q.build().execute(pool).await;
 

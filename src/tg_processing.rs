@@ -23,32 +23,7 @@ pub mod tg_processing {
     #[derive(BotCommands)]
     #[command(rename_rule = "lowercase")]
     enum Command {
-        ///
-        /// 🔏 Mammothcoding passgen.
-        /// Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
-        ///
-        /// 🔹 You can create a regular password,
-        /// choosing in the rules the presence of small and capital letters, numbers, special characters.
-        ///
-        /// 🔹 You can create a strong and usability password:
-        /// Including all characters, but
-        /// the first position in the password is a capital or small letter,
-        /// the last position is the symbol. Excluded ambiguous characters "0oOiIlL1".
-        /// 🔸 If this rule is enabled, the other consistency rules of the generating are not taken,
-        /// except for a rule "custom charset".
-        ///
-        /// 🔹 You can create a set from your custom charset:
-        /// 🔸 This set of characters will exclude all other rules except for a rule "strong & usability password".
-        /// ⚙️ If "strong & usability password" on too then you can generate combined strong and usability result with custom charset.
-        ///
-        /// 🔹 You can specify the required password length of not less than 4 and not more than 3900.
-        ///
-        /// 🦀 Made with Rust.
-        /// 🔗 Project homepage:
-        /// "https://github.com/mammothcoding/passgen-telegram".
-        ///
         Help,
-        /// 📱 Main menu
         Start,
         Ru,
         En,
@@ -195,15 +170,14 @@ pub mod tg_processing {
 
             match BotCommands::parse(text, me.username()) {
                 Ok(Command::Help) => {
-                    debug!("📗 User #{chat_id_i64} enter command /Help.");
-
-                    bot.send_message(msg.chat.id, Command::descriptions().to_string())
+                    debug!("📗 User #{chat_id_i64} enter command /help.");
+                    bot.send_message(chat_id, user_lang_map["help"])
+                        .parse_mode("HTML".parse().unwrap())
                         .await?;
                     set_user_dialog_context(chat_id_i64, "NULL").await;
                 }
                 Ok(Command::Start) => {
-                    debug!("📗 User #{chat_id_i64} enter command /Start.");
-
+                    debug!("📗 User #{chat_id_i64} enter command /start.");
                     if check_user_rec_avail(chat_id_i64).await {
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
@@ -215,6 +189,7 @@ pub mod tg_processing {
                                 let cr_result =
                                     cr_new_user_rec(chat_id_i64, bot_id_i64, from).await;
                                 if cr_result {
+                                    let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
                                     gen_and_send_main_menu(
                                         &bot,
                                         chat_id,
@@ -304,10 +279,10 @@ pub mod tg_processing {
                                     );
                                         bot.send_message(
                                             chat_id,
-                                            "<i>⚠️ A very large custom charset size has been passed. Please enter your character set below again 🔡🔢🔣</i>",
+                                            user_lang_map["dialog_large_cch"],
                                         )
-                                            .parse_mode("HTML".parse().unwrap())
-                                            .await?;
+                                        .parse_mode("HTML".parse().unwrap())
+                                        .await?;
                                     }
                                 }
                                 Err(_err) => {
@@ -373,8 +348,7 @@ pub mod tg_processing {
                                     debug!(
                                     "📙 Unknown type in mess from user #{chat_id_i64}. Received text: {text}"
                                 );
-                                    bot
-                                        .send_message(chat_id, "🚫 <i>Wrong number! Please enter your password length again🔢</i>")
+                                    bot.send_message(chat_id, user_lang_map["dialog_wrng_plen"])
                                         .parse_mode("HTML".parse().unwrap())
                                         .await?;
                                 }
@@ -388,7 +362,9 @@ pub mod tg_processing {
                                 bot.delete_message(chat_id, msg.id).await?;
                                 debug!("📗 User #{chat_id_i64} send \"🧹 pwd\". Last mess with pwd was deleted.");
                             } else {
-                                bot.send_message(chat_id, "🚫 Unknown command!").await?;
+                                bot.send_message(chat_id, user_lang_map["dialog_unk_cmd"])
+                                    .parse_mode("HTML".parse().unwrap())
+                                    .await?;
                                 info!(
                                     "📙 Unknown command from user #{}. Command text: {text}",
                                     msg.chat.id
@@ -438,13 +414,9 @@ pub mod tg_processing {
             Some(act) if act == "custom_charset".to_string() => {
                 if rules.custom_charset == "" {
                     set_user_dialog_context(chat_id_i64, "custom_charset").await;
-                    bot.send_message(
-                        chat_id.clone(),
-                        "<i>Please enter your character set below to generate a password
-🔡🔢🔣</i>",
-                    )
-                    .parse_mode("HTML".parse().unwrap())
-                    .await?;
+                    bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_cch"])
+                        .parse_mode("HTML".parse().unwrap())
+                        .await?;
                 } else {
                     rules.custom_charset = "".to_string();
                     rules.reconfigure_rules_according_selector(act.clone());
@@ -458,12 +430,9 @@ pub mod tg_processing {
             }
             Some(act) if act == "pwd_len".to_string() => {
                 set_user_dialog_context(chat_id_i64, "pwd_len").await;
-                bot.send_message(
-                    chat_id.clone(),
-                    "<i>Please enter your password length below🔢</i>",
-                )
-                .parse_mode("HTML".parse().unwrap())
-                .await?;
+                bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_plen"])
+                    .parse_mode("HTML".parse().unwrap())
+                    .await?;
             }
             Some(act) if act == "generate".to_string() => {
                 remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
@@ -481,7 +450,10 @@ pub mod tg_processing {
                 let mess = bot
                     .send_message(
                         chat_id.clone(),
-                        format!("<i>Password is (click to copy): </i><b><code>{pwd}</code></b>"),
+                        format!(
+                            "<i>{} </i><b><code>{pwd}</code></b>",
+                            user_lang_map["dialog_pwd_is"]
+                        ),
                     )
                     .parse_mode("HTML".parse().unwrap())
                     .reply_markup(
