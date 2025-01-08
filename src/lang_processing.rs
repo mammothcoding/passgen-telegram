@@ -2,7 +2,7 @@ pub mod lang_processing {
     use crate::db_processing::db_processing::get_user_app_lang;
     use std::collections::HashMap;
 
-    pub const EN: [(&str, &str); 16] = [
+    pub const EN: [(&str, &str); 18] = [
         ("menu_lcase", "include lowercase letters"),
         ("menu_cap", "include capital letters"),
         ("menu_num", "include numbers"),
@@ -11,12 +11,14 @@ pub mod lang_processing {
         ("menu_cch", "custom charset. Press to set."),
         ("menu_pass_len1", "password length"),
         ("menu_pass_len2", ". Press to edit."),
+        ("menu_pass_qua", "passwords quantity"),
         ("menu_btn_gen", "🎲 GENERATE"),
         ("dialog_large_cch", "<i>⚠️ A very large custom charset size has been passed. Please enter your character set below again 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Wrong length! Please enter your password length again 🔢</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Wrong number! Please enter the number again 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unknown command!</i>"),
         ("dialog_ent_cch", "<i>Please enter your character set below to generate a password 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Please enter your password length below 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Please enter the number of passwords to be generated 🔢</i>"),
         ("dialog_pwd_is", "Password is (click to copy):"),
         ("help", "<b>🔏 Mammothcoding password generator for Telegram.</b>
     A telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
@@ -40,7 +42,7 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const ES: [(&str, &str); 16] = [
+    pub const ES: [(&str, &str); 18] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras mayúsculas"),
         ("menu_num", "incluir números"),
@@ -49,12 +51,14 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
         ("menu_cch", "personalizado. Pulse para configurarlo."),
         ("menu_pass_len1", "longitud de la contraseña"),
         ("menu_pass_len2", ". Pulse para editar."),
+        ("menu_pass_qua", "Cantidad de contraseñas"),
         ("menu_btn_gen", "🎲 GENERAR"),
         ("dialog_large_cch", "<i>⚠️ Se ha pasado un tamaño de juego de caracteres personalizado muy grande. Vuelva a introducir su juego de caracteres 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Longitud incorrecta Vuelva a introducir la longitud de su contraseña 🔢</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Se ha equivocado de número. Vuelva a introducir el número 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 ¡Comando desconocido!</i>"),
         ("dialog_ent_cch", "<i>Introduzca a continuación su juego de caracteres para generar una contraseña 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Introduzca a continuación la longitud de su contraseña 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Introduzca el número de contraseñas que desea generar 🔢</i>"),
         ("dialog_pwd_is", "La contraseña es (haga clic para copiar):"),
         ("help", "<b>🔏 Mammothcoding generador de contraseñas para Telegram.</b>
     Un servicio bot de telegramas para generar contraseñas/tokens criptográficamente seguros y otros conjuntos y secuencias.
@@ -78,7 +82,7 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const PT: [(&str, &str); 16] = [
+    pub const PT: [(&str, &str); 18] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras maiúsculas"),
         ("menu_num", "incluir números"),
@@ -87,12 +91,14 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
         ("menu_cch", "conjunto de caracteres personalizado. Prima para definir."),
         ("menu_pass_len1", "comprimento da palavra-passe"),
         ("menu_pass_len2", ". Prima para editar."),
+        ("menu_pass_qua", "quantidade de palavras-passe"),
         ("menu_btn_gen", "🎲 GERAR"),
         ("dialog_large_cch", "<i>⚠️ Foi passado um tamanho de conjunto de caracteres personalizado muito grande. Por favor, introduza novamente o seu conjunto de caracteres abaixo 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Comprimento errado! Introduza novamente o comprimento da palavra-passe 🔢</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Número errado! Por favor, introduza o número novamente 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Comando desconhecido!</i>"),
         ("dialog_ent_cch", "<i>Introduza o seu conjunto de caracteres abaixo para gerar uma palavra-passe 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Introduza o comprimento da sua palavra-passe abaixo 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Introduza o número de palavras-passe a gerar 🔢</i>"),
         ("dialog_pwd_is", "A palavra-passe é (clique para copiar):"),
         ("help", "<b>🔏 Mammothcoding gerador de palavras-passe para o Telegram.</b>
     Um serviço de bot de telegramas para gerar palavras-passe/tokens criptograficamente seguros e outros conjuntos e sequências.
@@ -116,7 +122,7 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const FR: [(&str, &str); 16] = [
+    pub const FR: [(&str, &str); 18] = [
         ("menu_lcase", "inclure les lettres minuscules"),
         ("menu_cap", "inclure des lettres majuscules"),
         ("menu_num", "inclure des chiffres"),
@@ -125,12 +131,14 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
         ("menu_cch", "le jeu de caractères personnalisé. Appuyez sur pour définir."),
         ("menu_pass_len1", "longueur du mot de passe"),
         ("menu_pass_len2", ". Appuyez sur pour modifier."),
+        ("menu_pass_qua", "mots de passe quantité"),
         ("menu_btn_gen", "🎲 GÉNÉRER"),
         ("dialog_large_cch", "<i>⚠️ Une taille de jeu de caractères personnalisée très importante a été transmise. Veuillez saisir à nouveau votre jeu de caractères ci-dessous 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Mauvaise longueur ! Veuillez saisir à nouveau la longueur de votre mot de passe 🔢</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Mauvais numéro ! Veuillez saisir à nouveau le numéro 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Commande inconnue !</i>"),
         ("dialog_ent_cch", "<i>Veuillez saisir votre jeu de caractères ci-dessous pour générer un mot de passe 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Veuillez saisir la longueur de votre mot de passe ci-dessous 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Veuillez saisir le nombre de mots de passe à générer 🔢</i>"),
         ("dialog_pwd_is", "Le mot de passe est (cliquez pour copier) :"),
         ("help", "<b>🔏 Mammothcoding générateur de mot de passe pour Telegram.</b>
     Un service de télégrammes pour générer des mots de passe/tokens et d'autres ensembles et séquences cryptographiquement sécurisés.
@@ -154,7 +162,7 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
                                            ☑️/start"),
     ];
 
-    pub const DE: [(&str, &str); 16] = [
+    pub const DE: [(&str, &str); 18] = [
         ("menu_lcase", "Kleinbuchstaben enthalten"),
         ("menu_cap", "Großbuchstaben enthalten"),
         ("menu_num", "Zahlen einbeziehen"),
@@ -163,12 +171,14 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
         ("menu_cch", "benutzerdefinierten Zeichensatz. Drücken Sie zum Einstellen."),
         ("menu_pass_len1", "Passwort-Länge"),
         ("menu_pass_len2", ". Drücken Sie zum Bearbeiten."),
+        ("menu_pass_qua", "Passwörter Menge"),
         ("menu_btn_gen", "🎲 GENERIEREN"),
         ("dialog_large_cch", "<i>⚠️ Eine sehr große benutzerdefinierte Zeichensatzgröße wurde überschritten. Bitte geben Sie Ihren Zeichensatz unten erneut ein 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Falsche Länge! Bitte geben Sie die Länge Ihres Passworts erneut ein 🔢</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Falsche Nummer! Bitte geben Sie die Nummer erneut ein 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unbekannter Befehl!</i>"),
         ("dialog_ent_cch", "<i>Bitte geben Sie unten Ihren Zeichensatz ein, um ein Passwort zu generieren 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Bitte geben Sie unten die Länge Ihres Passworts ein 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Bitte geben Sie die Anzahl der zu generierenden Passwörter ein 🔢</i>"),
         ("dialog_pwd_is", "Das Passwort lautet (zum Kopieren anklicken):"),
         ("help", "<b>🔏 Mammothcoding passwort-Generator für Telegram.</b>
     Ein Telegramm-Botdienst zur Erzeugung von kryptographisch sicheren Passwörtern/Tokens und anderen Mengen und Sequenzen.
@@ -192,7 +202,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const RU: [(&str, &str); 16] = [
+    pub const RU: [(&str, &str); 18] = [
         ("menu_lcase", "включая маленькие буквы"),
         ("menu_cap", "включая заглавные буквы"),
         ("menu_num", "включая цифры"),
@@ -201,12 +211,14 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
         ("menu_cch", "установить свой набор симв."),
         ("menu_pass_len1", "длина пароля"),
         ("menu_pass_len2", ". Установить."),
+        ("menu_pass_qua", "количество паролей"),
         ("menu_btn_gen", "🎲 СГЕНЕРИРОВАТЬ"),
         ("dialog_large_cch", "<i>⚠️ Превышен размер пользовательского набора символов. Пожалуйста, введите набор символов поменьше еще раз 🔡🔢🔣</i>"),
-        ("dialog_wrng_plen", "<i>🚫 Неправильная длина! Пожалуйста, введите длину пароля еще раз 🔢.</i>"),
+        ("dialog_wrng_plen", "<i>🚫 Неправильное число! Пожалуйста, введите число еще раз 🔢.</i>"),
         ("dialog_unk_cmd", "<i>🚫 Неизвестная команда!</i>"),
         ("dialog_ent_cch", "<i>Пожалуйста, введите свой пользовательский набор символов 🔡🔢🔣</i>"),
         ("dialog_ent_plen", "<i>Пожалуйста, введите длину пароля 🔢</i>"),
+        ("dialog_ent_pqua", "<i>Пожалуйста, введите количество генерируемых паролей 🔢</i>"),
         ("dialog_pwd_is", "Пароль (нажмите, чтобы скопировать):"),
         ("help", "<b>🔏 Mammothcoding генератор паролей для Telegram.</b>
     Телеграм-бот-сервис для создания криптографически защищенных паролей/токенов и других наборов и последовательностей.

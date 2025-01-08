@@ -99,6 +99,11 @@ pub mod tg_processing {
             user_lang_map["menu_pass_len1"], rules.pwd_len, user_lang_map["menu_pass_len2"]
         )[..];
 
+        let pwd_quantity = &format!(
+            "{} 🟰 {} {}",
+            user_lang_map["menu_pass_qua"], rules.pwd_quantity, user_lang_map["menu_pass_len2"]
+        )[..];
+
         let inline_btns = [
             [InlineKeyboardButton::callback(enab_letters, "enab_letters")],
             [InlineKeyboardButton::callback(
@@ -119,6 +124,7 @@ pub mod tg_processing {
                 "custom_charset",
             )],
             [InlineKeyboardButton::callback(pwd_len, "pwd_len")],
+            [InlineKeyboardButton::callback(pwd_quantity, "pwd_quantity")],
             [InlineKeyboardButton::callback(
                 user_lang_map["menu_btn_gen"],
                 "generate",
@@ -189,7 +195,8 @@ pub mod tg_processing {
                                 let cr_result =
                                     cr_new_user_rec(chat_id_i64, bot_id_i64, from).await;
                                 if cr_result {
-                                    let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
+                                    let user_lang_map: HashMap<&str, &str> =
+                                        get_lang_map(chat_id_i64).await;
                                     gen_and_send_main_menu(
                                         &bot,
                                         chat_id,
@@ -354,6 +361,67 @@ pub mod tg_processing {
                                 }
                             }
                         }
+                        Some(context) if context == "pwd_quantity".to_string() => {
+                            match text.parse::<u64>() {
+                                Ok(mut pwd_quantity) => {
+                                    if pwd_quantity > 50 {
+                                        pwd_quantity = 50;
+                                    }
+                                    if pwd_quantity < 1 {
+                                        pwd_quantity = 1;
+                                    }
+                                    let mut rules: Rules =
+                                        get_pgen_rules(chat_id_i64).await.unwrap();
+                                    rules.pwd_quantity = pwd_quantity;
+                                    let set_rules_res = update_rules(chat_id_i64, rules).await;
+
+                                    if set_rules_res {
+                                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                                        remove_prev_mess(
+                                            &bot,
+                                            chat_id,
+                                            chat_id_i64,
+                                            "last_gen_mess_id",
+                                        )
+                                        .await;
+                                        remove_prev_mess(
+                                            &bot,
+                                            chat_id,
+                                            chat_id_i64,
+                                            "last_menu_mess_id",
+                                        )
+                                        .await;
+                                        gen_and_send_main_menu(
+                                            &bot,
+                                            chat_id,
+                                            chat_id_i64,
+                                            user_lang_map,
+                                        )
+                                        .await;
+                                        debug!(
+                                            "📗 Pwd_quantity for user #{chat_id_i64} successfully set."
+                                        )
+                                    } else {
+                                        error!(
+                                            "📕 Error by set pwd_quantity for user #{chat_id_i64}!"
+                                        );
+                                        bot.send_message(
+                                            chat_id,
+                                            "⚠️ Sorry, internal service error on set password quantity. Please use the service later.",
+                                        )
+                                            .await?;
+                                    }
+                                }
+                                Err(_err) => {
+                                    debug!(
+                                    "📙 Unknown type in mess from user #{chat_id_i64}. Received text: {text}"
+                                );
+                                    bot.send_message(chat_id, user_lang_map["dialog_wrng_plen"])
+                                        .parse_mode("HTML".parse().unwrap())
+                                        .await?;
+                                }
+                            }
+                        }
                         None => {}
                         _ => {
                             if text == "🧹 pwd" {
@@ -434,6 +502,12 @@ pub mod tg_processing {
                     .parse_mode("HTML".parse().unwrap())
                     .await?;
             }
+            Some(act) if act == "pwd_quantity".to_string() => {
+                set_user_dialog_context(chat_id_i64, "pwd_quantity").await;
+                bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_pqua"])
+                    .parse_mode("HTML".parse().unwrap())
+                    .await?;
+            }
             Some(act) if act == "generate".to_string() => {
                 remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
 
@@ -445,28 +519,51 @@ pub mod tg_processing {
                     custom_charset: rules.custom_charset.leak(),
                     enab_strong_usab: rules.enab_strong_usab,
                 };
-                let pwd = pgen_from_rules.generate(rules.pwd_len as u32);
 
-                let mess = bot
-                    .send_message(
-                        chat_id.clone(),
-                        format!(
-                            "<i>{} </i><b><code>{pwd}</code></b>",
-                            user_lang_map["dialog_pwd_is"]
-                        ),
-                    )
-                    .parse_mode("HTML".parse().unwrap())
-                    .reply_markup(
-                        KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
-                            .one_time_keyboard()
-                            .resize_keyboard(),
-                    )
-                    .await?;
-                let now_str = get_now_str();
-                println!("[{now_str}] 🎲 - New password for user #{chat_id_i64} was sent.");
-                info!("🎲 New password for user #{chat_id_i64} was sent.");
+                let mess_result = if rules.pwd_quantity == 1 {
+                    let pwd = pgen_from_rules.generate(rules.pwd_len as u32);
+                    let mess = bot
+                        .send_message(
+                            chat_id.clone(),
+                            format!(
+                                "<i>{} </i><b><code>{pwd}</code></b>",
+                                user_lang_map["dialog_pwd_is"]
+                            ),
+                        )
+                        .parse_mode("HTML".parse().unwrap())
+                        .reply_markup(
+                            KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
+                                .one_time_keyboard()
+                                .resize_keyboard(),
+                        )
+                        .await?;
+                    let now_str = get_now_str();
+                    println!("[{now_str}] 🎲 - New password for user #{chat_id_i64} was sent.");
+                    info!("🎲 New password for user #{chat_id_i64} was sent.");
+                    mess
+                } else {
+                    let pwds: Vec<String> = (0..(rules.pwd_quantity - 1))
+                        .map(|_| pgen_from_rules.generate(rules.pwd_len as u32))
+                        .collect();
+                    let mess = bot
+                        .send_message(
+                            chat_id.clone(),
+                            format!(
+                                "<i>{} </i><b><code>{:#?}</code></b>",
+                                user_lang_map["dialog_pwd_is"], pwds
+                            ),
+                        )
+                        .parse_mode("HTML".parse().unwrap())
+                        .reply_markup(
+                            KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
+                                .one_time_keyboard()
+                                .resize_keyboard(),
+                        )
+                        .await?;
+                    mess
+                };
 
-                let mess_id: i32 = mess.id.to_string().parse().unwrap();
+                let mess_id: i32 = mess_result.id.to_string().parse().unwrap();
                 increase_user_gen_count(chat_id_i64).await;
                 set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
             }

@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS main (
       "enab_spec_symbs": false,
       "custom_charset": "",
       "enab_strong_usab": true,
-      "pwd_len": 8
+      "pwd_len": 8,
+      "pwd_quantity": 1
     }'::jsonb,
     gen_count int8 default 0,
     last_menu_mess_id int4,

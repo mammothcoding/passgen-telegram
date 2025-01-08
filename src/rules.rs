@@ -10,6 +10,7 @@ pub mod rules {
         pub enab_strong_usab: bool,
         pub custom_charset: String,
         pub pwd_len: u64,
+        pub pwd_quantity: u64,
     }
 
     impl Rules {
