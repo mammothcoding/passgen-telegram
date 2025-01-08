@@ -1,9 +1,5 @@
 pub mod tg_processing {
-    use crate::db_processing::db_processing::{
-        check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules,
-        get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang,
-        set_user_dialog_context, update_rules,
-    };
+    use crate::db_processing::db_processing::{check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_data, get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang, set_user_dialog_context, update_rules};
     use crate::get_now_str;
     use crate::lang_processing::lang_processing::get_lang_map;
     use crate::rules::rules::Rules;
@@ -364,8 +360,8 @@ pub mod tg_processing {
                         Some(context) if context == "pwd_quantity".to_string() => {
                             match text.parse::<u64>() {
                                 Ok(mut pwd_quantity) => {
-                                    if pwd_quantity > 50 {
-                                        pwd_quantity = 50;
+                                    if pwd_quantity > 100 {
+                                        pwd_quantity = 100;
                                     }
                                     if pwd_quantity < 1 {
                                         pwd_quantity = 1;
@@ -542,25 +538,51 @@ pub mod tg_processing {
                     info!("🎲 New password for user #{chat_id_i64} was sent.");
                     mess
                 } else {
-                    let pwds: Vec<String> = (0..(rules.pwd_quantity - 1))
-                        .map(|_| pgen_from_rules.generate(rules.pwd_len as u32))
+                    let pwds: String = (1..=rules.pwd_quantity)
+                        .map(|_| {
+                            let mut row: String = pgen_from_rules.generate(rules.pwd_len as u32);
+                            row.push_str("\n");
+                            row
+                        })
                         .collect();
-                    let mess = bot
-                        .send_message(
-                            chat_id.clone(),
-                            format!(
-                                "<i>{} </i><b><code>{:#?}</code></b>",
-                                user_lang_map["dialog_pwd_is"], pwds
-                            ),
-                        )
-                        .parse_mode("HTML".parse().unwrap())
-                        .reply_markup(
-                            KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
-                                .one_time_keyboard()
-                                .resize_keyboard(),
-                        )
-                        .await?;
-                    mess
+
+                    if pwds.len() < 3950 {
+                        let mess = bot
+                            .send_message(
+                                chat_id.clone(),
+                                format!(
+                                    "<i>{} </i><b><code>{pwds}</code></b>",
+                                    user_lang_map["dialog_pwd_is"]
+                                ),
+                            )
+                            .parse_mode("HTML".parse().unwrap())
+                            .reply_markup(
+                                KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
+                                    .one_time_keyboard()
+                                    .resize_keyboard(),
+                            )
+                            .await?;
+                        mess
+                    } else {
+                        let user_data = get_user_data(chat_id_i64).await.unwrap();
+                        let mess = bot
+                            .send_message(
+                                chat_id.clone(),
+                                format!(
+                                    "<i>⚠️ {} {}</i>",
+                                    user_data.first_name, user_lang_map["dialog_max_mess_len"]
+                                ),
+                            )
+                            .parse_mode("HTML".parse().unwrap())
+                            .reply_markup(
+                                KeyboardMarkup::new([[KeyboardButton::new("🧹 pwd")]])
+                                    .one_time_keyboard()
+                                    .resize_keyboard(),
+                            )
+                            .await?;
+                        info!("⚠️🎲 User #{chat_id_i64} exceeded the length of the resulting message when generating it.");
+                        mess
+                    }
                 };
 
                 let mess_id: i32 = mess_result.id.to_string().parse().unwrap();

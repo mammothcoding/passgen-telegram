@@ -2,7 +2,7 @@ pub mod lang_processing {
     use crate::db_processing::db_processing::get_user_app_lang;
     use std::collections::HashMap;
 
-    pub const EN: [(&str, &str); 18] = [
+    pub const EN: [(&str, &str); 19] = [
         ("menu_lcase", "include lowercase letters"),
         ("menu_cap", "include capital letters"),
         ("menu_num", "include numbers"),
@@ -20,6 +20,9 @@ pub mod lang_processing {
         ("dialog_ent_plen", "<i>Please enter your password length below 🔢</i>"),
         ("dialog_ent_pqua", "<i>Please enter the number of passwords to be generated 🔢</i>"),
         ("dialog_pwd_is", "Password is (click to copy):"),
+        ("dialog_max_mess_len", "relax, why do you need so many long passwords?😀
+Try reducing the number of passwords or their length.
+The allowed message length for Telegram has been exceeded!"),
         ("help", "<b>🔏 Mammothcoding password generator for Telegram.</b>
     A telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng and Hc128Rng are used.</i>
@@ -36,13 +39,14 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
 🔹 You can create a set from your <i>\"custom charset\"</i> that includes any unicode characters like \"abcABC123⭕➖❎⚫⬛n₼⁂🙂\".
 🔸 This set of characters will exclude all other rules except for a rule <i>\"strong & usability password\"</i>.
 ⚙️ If <i>\"strong & usability password\"</i> on too then you can generate combined <i>strong and usability</i> result with <i>custom charset</i>.
-🔹 You can specify the required <i>password length</i> of not less than 4 and not more than 3900 characters.
+🔹 You can specify the required <i>\"password length\"</i> of not less than 4 and not more than 3900 characters.
+🔹 You can specify the required <i>\"passwords quantity\"</i> - not more than 100.
 🔹 For security purposes, you can delete the message with the last password you created using the
 <b>[🧹 pwd]</b> button that appears after you generate the password.
                                            ☑️/start"),
     ];
 
-    pub const ES: [(&str, &str); 18] = [
+    pub const ES: [(&str, &str); 19] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras mayúsculas"),
         ("menu_num", "incluir números"),
@@ -60,6 +64,9 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
         ("dialog_ent_plen", "<i>Introduzca a continuación la longitud de su contraseña 🔢</i>"),
         ("dialog_ent_pqua", "<i>Introduzca el número de contraseñas que desea generar 🔢</i>"),
         ("dialog_pwd_is", "La contraseña es (haga clic para copiar):"),
+        ("dialog_max_mess_len", "relájate, ¿por qué necesitas tantas contraseñas largas? 😀 .
+Intenta reducir el número de contraseñas o su longitud.
+¡Longitud de mensaje excedida para Telegram!"),
         ("help", "<b>🔏 Mammothcoding generador de contraseñas para Telegram.</b>
     Un servicio bot de telegramas para generar contraseñas/tokens criptográficamente seguros y otros conjuntos y secuencias.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Se utilizan Isaac64Rng y Hc128Rng.</i>
@@ -77,12 +84,13 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
 🔸 Este conjunto de caracteres excluirá todas las demás reglas excepto una regla <i>\"contraseña segura y fácil de usar\"</i>.
 ⚙️ Si la contraseña de fortaleza y usabilidad también está activada, puede generar un resultado combinado de fortaleza y usabilidad con un conjunto de <i>\"charset personalizado\"</i>.
 🔹 Puede especificar la longitud de contraseña requerida de no menos de 4 y no más de 3900 caracteres.
+🔹 Puede especificar el <i>\"Cantidad de contraseñas\"</i> requerido: no más de 100.
 🔹 Por motivos de seguridad, puedes eliminar el mensaje con la última contraseña que creaste utilizando el botón
 <b>[🧹 pwd]</b> que aparece después de generar la contraseña.
                                            ☑️/start"),
     ];
 
-    pub const PT: [(&str, &str); 18] = [
+    pub const PT: [(&str, &str); 19] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras maiúsculas"),
         ("menu_num", "incluir números"),
@@ -100,6 +108,9 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
         ("dialog_ent_plen", "<i>Introduza o comprimento da sua palavra-passe abaixo 🔢</i>"),
         ("dialog_ent_pqua", "<i>Introduza o número de palavras-passe a gerar 🔢</i>"),
         ("dialog_pwd_is", "A palavra-passe é (clique para copiar):"),
+        ("dialog_max_mess_len", "relaxa, porque é que precisas de tantas palavras-passe longas?
+Tenta reduzir o número de palavras-passe ou o seu comprimento.
+Comprimento da mensagem excedido para o Telegram!"),
         ("help", "<b>🔏 Mammothcoding gerador de palavras-passe para o Telegram.</b>
     Um serviço de bot de telegramas para gerar palavras-passe/tokens criptograficamente seguros e outros conjuntos e sequências.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> São utilizados Isaac64Rng e Hc128Rng.</i>
@@ -116,13 +127,14 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
 🔹 Você pode criar um conjunto a partir do seu <i>\"conjunto de caracteres personalizado\"</i> que inclui quaisquer caracteres unicode como \"abcABC123⭕➖❎⚫⬛n₼⁂🙂\".
 🔸 Este conjunto de caracteres excluirá todas as outras regras, exceto a regra <i>\"palavra-passe forte e de fácil utilização\"</i>.
 ⚙️ Se <i>\"palavra-passe forte e de fácil utilização\"</i> também estiver activada, pode gerar um resultado combinado forte e de fácil utilização com <i>conjunto de caracteres personalizados</i>.
-🔹 Pode especificar o “comprimento da palavra-passe” necessário, que não pode ser inferior a 4 nem superior a 3900 caracteres.
+🔹 Pode especificar o <i>\"comprimento da palavra-passe\"</i> necessário, que não pode ser inferior a 4 nem superior a 3900 caracteres.
+🔹 Pode especificar o <i>\"quantidade de palavras-passe\"</i> necessário - não mais de 100.
 🔹 Por motivos de segurança, pode eliminar a mensagem com a última palavra-passe criada através do botão
 <b>[🧹 pwd]</b> que aparece após ter gerado a palavra-passe.
                                            ☑️/start"),
     ];
 
-    pub const FR: [(&str, &str); 18] = [
+    pub const FR: [(&str, &str); 19] = [
         ("menu_lcase", "inclure les lettres minuscules"),
         ("menu_cap", "inclure des lettres majuscules"),
         ("menu_num", "inclure des chiffres"),
@@ -140,6 +152,9 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
         ("dialog_ent_plen", "<i>Veuillez saisir la longueur de votre mot de passe ci-dessous 🔢</i>"),
         ("dialog_ent_pqua", "<i>Veuillez saisir le nombre de mots de passe à générer 🔢</i>"),
         ("dialog_pwd_is", "Le mot de passe est (cliquez pour copier) :"),
+        ("dialog_max_mess_len", "relax, pourquoi as-tu besoin d'autant de mots de passe longs ? 😀
+Essayez de réduire le nombre de mots de passe ou leur longueur.
+Longueur du message dépassée pour Telegram !"),
         ("help", "<b>🔏 Mammothcoding générateur de mot de passe pour Telegram.</b>
     Un service de télégrammes pour générer des mots de passe/tokens et d'autres ensembles et séquences cryptographiquement sécurisés.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng et Hc128Rng sont utilisés.</i>
@@ -156,13 +171,14 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
 🔹 Vous pouvez créer un ensemble à partir de votre <i>\"le jeu de caractères personnalisé\"</i> qui inclut tous les caractères unicode comme \"abcABC123⭕➖❎⚫⬛n₼⁂🙂\".
 🔸 Cet ensemble de caractères exclura toutes les autres règles à l'exception d'une règle <i>\"mot de passe fort et facile à utiliser\"</i>.
 ⚙️ Si l'option <i>\"mot de passe fort et facile à utiliser\"</i> est également activée, vous pouvez générer un résultat combiné <i>\"mot de passe fort et facile à utiliser\"</i> avec <i>\"le jeu de caractères personnalisé\"</i>.
-🔹 Vous pouvez spécifier la <i>longueur du mot de passe</i> requise, qui ne doit pas être inférieure à 4 ni supérieure à 3900 caractères.
+🔹 Vous pouvez spécifier la <i>\"longueur du mot de passe\"</i> requise, qui ne doit pas être inférieure à 4 ni supérieure à 3900 caractères.
+🔹 Vous pouvez spécifier le <i>\"mots de passe quantité\"</i> requis - pas plus de 100.
 🔹 Pour des raisons de sécurité, vous pouvez supprimer le message contenant le dernier mot de passe que vous avez créé à l'aide du bouton
 <b>[🧹 pwd]</b> qui apparaît après avoir généré le mot de passe.
                                            ☑️/start"),
     ];
 
-    pub const DE: [(&str, &str); 18] = [
+    pub const DE: [(&str, &str); 19] = [
         ("menu_lcase", "Kleinbuchstaben enthalten"),
         ("menu_cap", "Großbuchstaben enthalten"),
         ("menu_num", "Zahlen einbeziehen"),
@@ -180,6 +196,9 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
         ("dialog_ent_plen", "<i>Bitte geben Sie unten die Länge Ihres Passworts ein 🔢</i>"),
         ("dialog_ent_pqua", "<i>Bitte geben Sie die Anzahl der zu generierenden Passwörter ein 🔢</i>"),
         ("dialog_pwd_is", "Das Passwort lautet (zum Kopieren anklicken):"),
+        ("dialog_max_mess_len", "Relax, warum brauchen Sie so viele lange Passwörter? 😀
+Versuchen Sie, die Anzahl der Passwörter oder ihre Länge zu reduzieren.
+Nachrichtenlänge für Telegram überschritten!"),
         ("help", "<b>🔏 Mammothcoding passwort-Generator für Telegram.</b>
     Ein Telegramm-Botdienst zur Erzeugung von kryptographisch sicheren Passwörtern/Tokens und anderen Mengen und Sequenzen.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng und Hc128Rng werden verwendet.</i>
@@ -196,13 +215,14 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
 🔹 Sie können einen Satz aus Ihrem <i>\"benutzerdefinierten Zeichensatz\"</i> erstellen, der alle Unicode-Zeichen wie \"abcABC123⭕➖❎⚫⬛n₼⁂🙂\" enthält.
 🔸 Dieser Zeichensatz schließt alle anderen Regeln aus, mit Ausnahme der Regel <i>\"starkes & benutzerfreundliches Passwort\"</i>.
 ⚙️ Wenn auch <i>\"starkes & benutzerfreundliches Passwort\"</i> aktiviert ist, können Sie mit <i>\"benutzerdefinierten Zeichensatz\"</i> ein kombiniertes <i>starkes & benutzerfreundliches</i> Ergebnis erzeugen.
-🔹 Sie können die erforderliche <i>Passwort-Länge</i> von nicht weniger als 4 und nicht mehr als 3900 Zeichen angeben.
+🔹 Sie können die erforderliche <i>\"Passwort-Länge\"</i> von nicht weniger als 4 und nicht mehr als 3900 Zeichen angeben.
+🔹 Sie können die gewünschte <i>\"Passwörter Menge\"</i> angeben - nicht mehr als 100.
 🔹 Aus Sicherheitsgründen können Sie die Nachricht mit Ihrem zuletzt erstellten Passwort über die Schaltfläche
 <b>[🧹 pwd]</b> löschen, die nach der Passwortgenerierung angezeigt wird.
                                            ☑️/start"),
     ];
 
-    pub const RU: [(&str, &str); 18] = [
+    pub const RU: [(&str, &str); 19] = [
         ("menu_lcase", "включая маленькие буквы"),
         ("menu_cap", "включая заглавные буквы"),
         ("menu_num", "включая цифры"),
@@ -220,6 +240,9 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
         ("dialog_ent_plen", "<i>Пожалуйста, введите длину пароля 🔢</i>"),
         ("dialog_ent_pqua", "<i>Пожалуйста, введите количество генерируемых паролей 🔢</i>"),
         ("dialog_pwd_is", "Пароль (нажмите, чтобы скопировать):"),
+        ("dialog_max_mess_len", "расслабься, зачем тебе столько длинных паролей?😀
+Попробуй уменьшить количество паролей или их длину.
+Превышена допустимая длина сообщения для Telegram!"),
         ("help", "<b>🔏 Mammothcoding генератор паролей для Telegram.</b>
     Телеграм-бот-сервис для создания криптографически защищенных паролей/токенов и других наборов и последовательностей.
 <i>В генераторе используются <a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng and Hc128Rng.</i>
@@ -237,6 +260,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
 🔸 Этот набор символов исключит все остальные правила, кроме правила <i>\"сильный и удобный пароль\"</i>.
 ⚙️ Если правило <i>\"сильный и удобный пароль\"</i> тоже включено, то вы можете сгенерировать комбинированный результат <i>\"сильный и удобный пароль\"</i> с <i>пользовательским набором символов</i>.
 🔹 Вы можете указать необходимую <i>\"длину пароля\"</i> - не менее 4 и не более 3900 символов.
+🔹 Вы можете указать необходимое <i>\"количество паролей\"</i> - не более 100.
 🔹 В целях безопасности вы можете удалить сообщение с последним созданным паролем с помощью кнопки
 <b>[🧹 pwd]</b>, которая появляется после генерирования пароля.
                                            ☑️/start"),

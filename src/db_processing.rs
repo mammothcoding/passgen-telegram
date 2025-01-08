@@ -361,4 +361,39 @@ pub mod db_processing {
             }
         }
     }
+
+    pub async fn get_user_data(chat_id: i64) -> Option<user_data> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT user_data as Json from main WHERE chat_id = ");
+        q.push_bind(chat_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => {
+                let user_data_json = &_ok.try_get_raw(0).unwrap().as_str().unwrap()[1..];
+                let parse_to_user_data = serde_json::from_str::<user_data>(user_data_json);
+                match parse_to_user_data {
+                    Ok(_ok) => {
+                        debug!("📗 Get User_data for user #{chat_id} is successfully.");
+                        Option::from(_ok)
+                    }
+                    Err(_err) => {
+                        println!("[{now_str}] 📕 - Get User_data & parse to Rules for user #{chat_id} has error: {}", _err);
+                        error!(
+                            "📕 Get User_data & parse to User_data for user #{chat_id} has error: {}",
+                            _err
+                        );
+                        None
+                    }
+                }
+            }
+            Err(_err) => {
+                error!("📙 Empty result of query get_pgen_rules: '{_err}'.");
+                None
+            }
+        }
+    }
 }
