@@ -562,6 +562,9 @@ pub mod tg_processing {
                                     .resize_keyboard(),
                             )
                             .await?;
+                        let now_str = get_now_str();
+                        println!("[{now_str}] 🎲🎲 - New {} passwords for user #{chat_id_i64} was sent.", rules.pwd_quantity);
+                        info!("🎲🎲 New {} passwords for user #{chat_id_i64} was sent.", rules.pwd_quantity);
                         mess
                     } else {
                         let user_data = get_user_data(chat_id_i64).await.unwrap();
