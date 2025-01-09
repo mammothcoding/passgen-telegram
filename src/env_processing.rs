@@ -19,6 +19,7 @@ pub mod env_processing {
         pub log_trigger_file_size: u64,
         pub log_files_count: u32,
         pub log_files_path: String,
+        pub tg_user_id_to_web_stat_access: i64,
     }
 
     impl DotEnv {
@@ -31,6 +32,7 @@ pub mod env_processing {
             let default_log_trigger_file_size = "1048576";
             let default_log_files_count = "5";
             let default_log_files_path = "log";
+            let default_tg_user_id_to_web_stat_access = "0";
 
             let now_str = get_now_str();
             let cur_exe_binding = env::current_exe()
@@ -158,6 +160,22 @@ pub mod env_processing {
                     default_log_files_path,
                     &mut missing_keys,
                 ),
+                tg_user_id_to_web_stat_access: {
+                    match get_env_var(
+                        "TG_USER_ID_TO_WEB_STAT_ACCESS",
+                        &env_variables,
+                        default_tg_user_id_to_web_stat_access,
+                        &mut missing_keys,
+                    )
+                        .parse::<i64>()
+                    {
+                        Ok(id) => id,
+                        Err(_) => {
+                            missing_keys.push("TG_USER_ID_TO_WEB_STAT_ACCESS");
+                            0
+                        }
+                    }
+                }
             };
 
             let now_str = get_now_str();

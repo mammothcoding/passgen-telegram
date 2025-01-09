@@ -1,5 +1,9 @@
 pub mod tg_processing {
-    use crate::db_processing::db_processing::{check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_data, get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang, set_user_dialog_context, update_rules};
+    use crate::db_processing::db_processing::{
+        check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_data,
+        get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang,
+        set_user_dialog_context, update_rules,
+    };
     use crate::get_now_str;
     use crate::lang_processing::lang_processing::get_lang_map;
     use crate::rules::rules::Rules;
@@ -141,7 +145,7 @@ pub mod tg_processing {
         let mess = bot
             .send_message(
                 chat_id,
-                "⚙ <b>McPassgen</b>               /help❔\n🌐 /en  /es  /pt  /fr  /de  /ru",
+                "⚙ <b>McPassgen</b>               /help❔\n🌐 /en  /es  /pt  /fr  /de  /ru\n",
             )
             .parse_mode("HTML".parse().unwrap())
             .reply_markup(keyboard)
@@ -563,8 +567,14 @@ pub mod tg_processing {
                             )
                             .await?;
                         let now_str = get_now_str();
-                        println!("[{now_str}] 🎲🎲 - New {} passwords for user #{chat_id_i64} was sent.", rules.pwd_quantity);
-                        info!("🎲🎲 New {} passwords for user #{chat_id_i64} was sent.", rules.pwd_quantity);
+                        println!(
+                            "[{now_str}] 🎲🎲 - New {} passwords for user #{chat_id_i64} was sent.",
+                            rules.pwd_quantity
+                        );
+                        info!(
+                            "🎲🎲 New {} passwords for user #{chat_id_i64} was sent.",
+                            rules.pwd_quantity
+                        );
                         mess
                     } else {
                         let user_data = get_user_data(chat_id_i64).await.unwrap();

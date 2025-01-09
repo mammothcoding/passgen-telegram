@@ -11,13 +11,14 @@ use crate::db_processing::db_processing::init as db_pool_init;
 use crate::env_processing::env_processing::DotEnv;
 use crate::log::log::init as log_init;
 use crate::tg_processing::tg_processing::{callback_handler, message_handler, send_test_tg_mess};
-use rules::rules::Rules;
-use teloxide::{Bot};
-use teloxide::{prelude::*, update_listeners::webhooks};
-use axum::{routing::get, Router};
-use std::{net::SocketAddr};
-use std::future::IntoFuture;
+use crate::web_stat::web_stat::{gen_token, get_web_state_token};
 use ::log::info;
+use axum::{routing::get, Router};
+use rules::rules::Rules;
+use std::future::IntoFuture;
+use std::net::SocketAddr;
+use teloxide::Bot;
+use teloxide::{prelude::*, update_listeners::webhooks};
 
 pub fn get_now_str() -> String {
     chrono::Local::now()
@@ -42,11 +43,12 @@ async fn main() {
     let web_stat_adr = SocketAddr::from(([0, 0, 0, 0], 8001));
     let web_stat_listener = tokio::net::TcpListener::bind(web_stat_adr)
         .await
-        .expect(&format!("[{now_str}] 🚫 Error on init listener for web_stat_server!"));
+        .expect(&format!(
+            "[{now_str}] 🚫 Error on init listener for web_stat_server!"
+        ));
     let web_stat_serv = axum::serve(web_stat_listener, web_stat_app);
     println!("[{now_str}] ✅ - Web_stat_server prep OK.");
     info!("✅ Web_stat_server prep OK.");
-
 
     // Setup teloxide listener.
     let now_str = get_now_str();
@@ -71,18 +73,19 @@ async fn main() {
         //.dependencies(dptree::deps![db_pool])
         //.enable_ctrlc_handler()
         .build();
-    let telox_disp = telox_binding
-        .dispatch_with_listener(
-            listener,
-            LoggingErrorHandler::with_custom_text(&format!(
-                "[{now_str}] 🚫 - An error from the update listener"
-            )),
-        );
+    let telox_disp = telox_binding.dispatch_with_listener(
+        listener,
+        LoggingErrorHandler::with_custom_text(&format!(
+            "[{now_str}] 🚫 - An error from the update listener"
+        )),
+    );
 
     let (_error1, _error2) = tokio::join!(web_stat_serv.into_future(), telox_disp.into_future());
     println!("[{now_str}] 🚫 - Errors on par_run!");
 }
 
 async fn web_stat_handler() -> String {
-    "Hello World! web_stat_handler".to_string()
+    gen_token();
+    get_web_state_token().to_string()
+    //"Hello World! web_stat_handler".to_string()
 }
