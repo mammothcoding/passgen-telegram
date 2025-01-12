@@ -19,20 +19,20 @@ pub mod env_processing {
         pub log_trigger_file_size: u64,
         pub log_files_count: u32,
         pub log_files_path: String,
-        pub tg_user_id_to_web_stat_access: i64,
+        pub tg_users_id_to_web_stat_access: Vec<i64>,
     }
 
     impl DotEnv {
         // Obtain variables from ".env" file stored near binary file.
         pub fn parse_dot_env() -> DotEnv {
-            let default_db_port = "5432";
-            let default_db_name = "tg_passgen_db";
-            let default_log_stderr_lvl = "off";
-            let default_log_logfile_lvl = "off";
-            let default_log_trigger_file_size = "1048576";
-            let default_log_files_count = "5";
-            let default_log_files_path = "log";
-            let default_tg_user_id_to_web_stat_access = "0";
+            let default_db_port = Option::from("5432");
+            let default_db_name = Option::from("tg_passgen_db");
+            let default_log_stderr_lvl = Option::from("off");
+            let default_log_logfile_lvl = Option::from("off");
+            let default_log_trigger_file_size = Option::from("1048576");
+            let default_log_files_count = Option::from("5");
+            let default_log_files_path = Option::from("log");
+            let default_tg_user_id_to_web_stat_access = Option::from("");
 
             let now_str = get_now_str();
             let cur_exe_binding = env::current_exe()
@@ -45,23 +45,35 @@ pub mod env_processing {
             fn get_env_var<'a>(
                 key: &'a str,
                 env_variables: &HashMap<String, String>,
-                default_val: &str,
+                default_val: Option<&str>,
                 missing_keys: &mut Vec<&'a str>,
             ) -> String {
-                if env_variables.contains_key(key) {
-                    let res = env_variables[key].to_string();
-                    if res.is_empty() {
-                        missing_keys.push(key);
-                        "".to_string()
-                    } else {
-                        res
+                match default_val {
+                    Some(default_val) => {
+                        if env_variables.contains_key(key) {
+                            let res = env_variables[key].to_string();
+                            if res.is_empty() {
+                                default_val.to_string()
+                            } else {
+                                res
+                            }
+                        } else {
+                            default_val.to_string()
+                        }
                     }
-                } else {
-                    if default_val.is_empty() {
-                        missing_keys.push(key);
-                        "".to_string()
-                    } else {
-                        default_val.to_string()
+                    _ => {
+                        if env_variables.contains_key(key) {
+                            let res = env_variables[key].to_string();
+                            if res.is_empty() {
+                                missing_keys.push(key);
+                                "".to_string()
+                            } else {
+                                res
+                            }
+                        } else {
+                            missing_keys.push(key);
+                            "".to_string()
+                        }
                     }
                 }
             }
@@ -70,22 +82,22 @@ pub mod env_processing {
                 tg_bot_token: get_env_var(
                     "TELEGRAM_BOT_TOKEN",
                     &env_variables,
-                    "",
+                    None,
                     &mut missing_keys,
                 ),
                 tg_web_hook_url: get_env_var(
                     "TELEGRAM_WEBHOOK_URL",
                     &env_variables,
-                    "",
+                    None,
                     &mut missing_keys,
                 ),
                 tg_bot_socket_addr: get_env_var(
                     "TELEGRAM_BOT_SOCKET_ADDR",
                     &env_variables,
-                    "",
+                    None,
                     &mut missing_keys,
                 ),
-                db_host: get_env_var("DB_HOST", &env_variables, "", &mut missing_keys),
+                db_host: get_env_var("DB_HOST", &env_variables, None, &mut missing_keys),
                 db_port: {
                     match get_env_var(
                         "DB_PORT",
@@ -108,8 +120,8 @@ pub mod env_processing {
                     default_db_name,
                     &mut missing_keys,
                 ),
-                db_username: get_env_var("DB_USERNAME", &env_variables, "", &mut missing_keys),
-                db_password: get_env_var("DB_PASSWORD", &env_variables, "", &mut missing_keys),
+                db_username: get_env_var("DB_USERNAME", &env_variables, None, &mut missing_keys),
+                db_password: get_env_var("DB_PASSWORD", &env_variables, None, &mut missing_keys),
                 log_stderr_lvl: get_env_var(
                     "LOG_STDERR_LVL",
                     &env_variables,
@@ -160,20 +172,29 @@ pub mod env_processing {
                     default_log_files_path,
                     &mut missing_keys,
                 ),
-                tg_user_id_to_web_stat_access: {
-                    match get_env_var(
-                        "TG_USER_ID_TO_WEB_STAT_ACCESS",
+                tg_users_id_to_web_stat_access: {
+                    let mut users_ids: Vec<i64> = Vec::new();
+                    let from_env = get_env_var(
+                        "TG_USERS_ID_TO_WEB_STAT_ACCESS",
                         &env_variables,
                         default_tg_user_id_to_web_stat_access,
                         &mut missing_keys,
-                    )
-                        .parse::<i64>()
-                    {
-                        Ok(id) => id,
-                        Err(_) => {
-                            missing_keys.push("TG_USER_ID_TO_WEB_STAT_ACCESS");
-                            0
+                    );
+                    if from_env.is_empty() {
+                        users_ids
+                    } else {
+                        let potential_ids = &from_env[..].split(",").collect::<Vec<&str>>();
+                        for potential_id in potential_ids {
+                            match potential_id.trim().parse::<i64>()
+                            {
+                                Ok(id) => users_ids.push(id),
+                                Err(_) => {
+                                    missing_keys.push("TG_USERS_ID_TO_WEB_STAT_ACCESS");
+                                    break
+                                }
+                            }
                         }
+                        users_ids
                     }
                 }
             };
@@ -182,6 +203,7 @@ pub mod env_processing {
             if missing_keys.is_empty() {
                 println!("[{now_str}] ✅ - .env init is OK.");
                 info!("✅ - .env init is OK.");
+                println!("✅ - users_ids: {:#?}", &res.tg_users_id_to_web_stat_access);
                 res
             } else {
                 println!("[{now_str}] 🚫 - Missing .env keys:");

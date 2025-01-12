@@ -19,9 +19,10 @@ pub mod web_stat {
         web_state().lock().unwrap()[0]
     }
 
-    pub fn get_in_menu_wstat_link_line() -> &'static str {
+    /*pub fn get_in_menu_wstat_link_line() -> &'static str {
         gen_token();
         get_web_state_token();
         let line = format!("📊 <b><a href=\"https://github.com/mammothcoding/passgen-telegram\">stat-glob</a></b>");
-    }
+        line
+    }*/
 }
