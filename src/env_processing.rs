@@ -5,6 +5,7 @@ pub mod env_processing {
     use std::collections::HashMap;
     use std::{env, process};
 
+    #[derive(Clone)]
     pub struct DotEnv {
         pub tg_bot_token: String,
         pub tg_web_hook_url: String,
@@ -20,6 +21,7 @@ pub mod env_processing {
         pub log_files_count: u32,
         pub log_files_path: String,
         pub tg_users_id_to_web_stat_access: Vec<i64>,
+        pub web_stat_addrs: Vec<[String; 2]>,
     }
 
     impl DotEnv {
@@ -33,6 +35,7 @@ pub mod env_processing {
             let default_log_files_count = Option::from("5");
             let default_log_files_path = Option::from("log");
             let default_tg_user_id_to_web_stat_access = Option::from("");
+            let default_web_stat_addrs = Option::from("");
 
             let now_str = get_now_str();
             let cur_exe_binding = env::current_exe()
@@ -183,27 +186,54 @@ pub mod env_processing {
                     if from_env.is_empty() {
                         users_ids
                     } else {
-                        let potential_ids = &from_env[..].split(",").collect::<Vec<&str>>();
+                        let potential_ids = &from_env[..].split(',').collect::<Vec<&str>>();
                         for potential_id in potential_ids {
-                            match potential_id.trim().parse::<i64>()
-                            {
+                            match potential_id.trim().parse::<i64>() {
                                 Ok(id) => users_ids.push(id),
                                 Err(_) => {
                                     missing_keys.push("TG_USERS_ID_TO_WEB_STAT_ACCESS");
-                                    break
+                                    break;
                                 }
                             }
                         }
                         users_ids
                     }
-                }
+                },
+                web_stat_addrs: {
+                    let mut res_pairs: Vec<[String; 2]> = Vec::new();
+                    let from_env = get_env_var(
+                        "WEB_STAT_ADDRS",
+                        &env_variables,
+                        default_web_stat_addrs,
+                        &mut missing_keys,
+                    );
+                    if from_env.is_empty() {
+                        res_pairs
+                    } else {
+                        let potential_pairs = &from_env[..].split(',').collect::<Vec<&str>>();
+                        for potential_pair in potential_pairs {
+                            if potential_pair.contains('|') {
+                                let pair = potential_pair.trim().split('|').collect::<Vec<&str>>();
+                                if pair.len() == 2 && !pair[0].is_empty() && !pair[1].is_empty() {
+                                    res_pairs.push([pair[0].to_string(), pair[1].to_string()]);
+                                } else {
+                                    missing_keys.push("WEB_STAT_ADDRS");
+                                    break;
+                                }
+                            } else {
+                                missing_keys.push("WEB_STAT_ADDRS");
+                                break;
+                            }
+                        }
+                        res_pairs
+                    }
+                },
             };
 
             let now_str = get_now_str();
             if missing_keys.is_empty() {
                 println!("[{now_str}] ✅ - .env init is OK.");
                 info!("✅ - .env init is OK.");
-                println!("✅ - users_ids: {:#?}", &res.tg_users_id_to_web_stat_access);
                 res
             } else {
                 println!("[{now_str}] 🚫 - Missing .env keys:");

@@ -39,7 +39,9 @@ async fn main() {
 
     // Web_stat
     let now_str = get_now_str();
-    let web_stat_app = Router::new().route("/", get(|| web_stat_handler()));
+    let web_stat_app = Router::new()
+        .route("/", get(|| web_stat_handler()));
+        //.route("/favicon.ico", get(|| axum::response:: ::NamedFile::open("/path/to/your/image/file/../favicon.png"));
     let web_stat_adr = SocketAddr::from(([0, 0, 0, 0], 8001));
     let web_stat_listener = tokio::net::TcpListener::bind(web_stat_adr)
         .await
@@ -70,7 +72,7 @@ async fn main() {
     send_test_tg_mess(&bot).await;
 
     let mut telox_binding = Dispatcher::builder(bot.clone(), telox_handler)
-        //.dependencies(dptree::deps![db_pool])
+        .dependencies(dptree::deps![env_data])
         //.enable_ctrlc_handler()
         .build();
     let telox_disp = telox_binding.dispatch_with_listener(

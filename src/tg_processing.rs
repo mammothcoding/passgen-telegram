@@ -4,9 +4,11 @@ pub mod tg_processing {
         get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang,
         set_user_dialog_context, update_rules,
     };
+    use crate::env_processing::env_processing::DotEnv;
     use crate::get_now_str;
     use crate::lang_processing::lang_processing::get_lang_map;
     use crate::rules::rules::Rules;
+    use crate::web_stat::web_stat::{gen_token, get_web_state_token};
     use log::{debug, error, info, warn};
     use passgenlib::Passgen;
     use std::collections::HashMap;
@@ -19,12 +21,14 @@ pub mod tg_processing {
         Me, Message, MessageId,
     };
     use teloxide_core::Bot;
+    use url::Url;
 
     #[derive(BotCommands)]
     #[command(rename_rule = "lowercase")]
     enum Command {
         Help,
         Start,
+        Stat,
         Ru,
         En,
         Es,
@@ -134,18 +138,59 @@ pub mod tg_processing {
         InlineKeyboardMarkup::new(inline_btns)
     }
 
+    fn stat_links_menu(env_data: &DotEnv) -> InlineKeyboardMarkup {
+        gen_token();
+        let token: &str = get_web_state_token();
+        let mut inline_btns = Vec::new();
+
+        for addr in &env_data.web_stat_addrs {
+            let potential_url = Url::parse(&format!("{}/{}", &addr[1], token)[..]);
+            match potential_url {
+                Ok(url) => inline_btns.push([InlineKeyboardButton::url(
+                        format!("📊 {}", &addr[0]),
+                        url,
+                    )]),
+                Err(err) => {
+                    let now_str = get_now_str();
+                    println!(
+                        "[{now_str}] 🚫 - Error on parsing URL for web-stat link: {}",
+                        err
+                    );
+                    error!("🚫 Error on parsing URL for web-stat link: {}", err);
+                }
+            }
+        }
+
+        InlineKeyboardMarkup::new(inline_btns)
+    }
+
     async fn gen_and_send_main_menu(
+        env_data: &DotEnv,
         bot: &Bot,
         chat_id: ChatId,
         chat_id_i64: i64,
         user_lang_map: HashMap<&str, &str>,
     ) {
         let keyboard = main_menu(chat_id_i64, user_lang_map).await;
+        let stat_link: &str = {
+            if !env_data.web_stat_addrs.is_empty()
+                && env_data
+                    .tg_users_id_to_web_stat_access
+                    .contains(&chat_id_i64)
+            {
+                "📊 /stat"
+            } else {
+                ""
+            }
+        };
 
         let mess = bot
             .send_message(
                 chat_id,
-                "⚙ <b>McPassgen</b>               /help❔\n🌐 /en  /es  /pt  /fr  /de  /ru\n",
+                format!(
+                    "⚙ <b>McPassgen</b>               /help❔\n🌐 /en  /es  /pt  /fr  /de  /ru\n{}",
+                    stat_link
+                ),
             )
             .parse_mode("HTML".parse().unwrap())
             .reply_markup(keyboard)
@@ -164,6 +209,7 @@ pub mod tg_processing {
     }
 
     pub async fn message_handler(
+        env_data: DotEnv,
         bot: Bot,
         msg: Message,
         me: Me,
@@ -182,12 +228,37 @@ pub mod tg_processing {
                         .await?;
                     set_user_dialog_context(chat_id_i64, "NULL").await;
                 }
+                Ok(Command::Stat) => {
+                    debug!("📗 User #{chat_id_i64} enter command /stat.");
+
+                    if !env_data.web_stat_addrs.is_empty()
+                        && env_data
+                            .tg_users_id_to_web_stat_access
+                            .contains(&chat_id_i64)
+                    {
+                        let keyboard = stat_links_menu(&env_data);
+
+                        bot.send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
+                            .parse_mode("HTML".parse().unwrap())
+                            .reply_markup(keyboard)
+                            .await?;
+                    } else {
+                        info!("📙 User #{chat_id_i64} was tried get access to Web-stat!");
+                    }
+                }
                 Ok(Command::Start) => {
                     debug!("📗 User #{chat_id_i64} enter command /start.");
                     if check_user_rec_avail(chat_id_i64).await {
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
-                        gen_and_send_main_menu(&bot, chat_id, chat_id_i64, user_lang_map).await;
+                        gen_and_send_main_menu(
+                            &env_data,
+                            &bot,
+                            chat_id,
+                            chat_id_i64,
+                            user_lang_map,
+                        )
+                        .await;
                         set_user_dialog_context(chat_id_i64, "NULL").await;
                     } else {
                         match msg.from {
@@ -198,6 +269,7 @@ pub mod tg_processing {
                                     let user_lang_map: HashMap<&str, &str> =
                                         get_lang_map(chat_id_i64).await;
                                     gen_and_send_main_menu(
+                                        &env_data,
                                         &bot,
                                         chat_id,
                                         chat_id_i64,
@@ -224,12 +296,12 @@ pub mod tg_processing {
                         }
                     }
                 }
-                Ok(Command::En) => change_iface_lang(bot, chat_id, chat_id_i64, "en").await,
-                Ok(Command::Es) => change_iface_lang(bot, chat_id, chat_id_i64, "es").await,
-                Ok(Command::Pt) => change_iface_lang(bot, chat_id, chat_id_i64, "pt").await,
-                Ok(Command::Fr) => change_iface_lang(bot, chat_id, chat_id_i64, "fr").await,
-                Ok(Command::De) => change_iface_lang(bot, chat_id, chat_id_i64, "de").await,
-                Ok(Command::Ru) => change_iface_lang(bot, chat_id, chat_id_i64, "ru").await,
+                Ok(Command::En) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "en").await,
+                Ok(Command::Es) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "es").await,
+                Ok(Command::Pt) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "pt").await,
+                Ok(Command::Fr) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "fr").await,
+                Ok(Command::De) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "de").await,
+                Ok(Command::Ru) => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "ru").await,
                 // Unknown command or text for necessary context or necessary text action
                 Err(_) => {
                     let context = get_user_dialog_context(chat_id_i64).await;
@@ -261,6 +333,7 @@ pub mod tg_processing {
                                             )
                                             .await;
                                             gen_and_send_main_menu(
+                                                &env_data,
                                                 &bot,
                                                 chat_id,
                                                 chat_id_i64,
@@ -333,6 +406,7 @@ pub mod tg_processing {
                                         )
                                         .await;
                                         gen_and_send_main_menu(
+                                            &env_data,
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
@@ -392,6 +466,7 @@ pub mod tg_processing {
                                         )
                                         .await;
                                         gen_and_send_main_menu(
+                                            &env_data,
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
@@ -447,6 +522,7 @@ pub mod tg_processing {
     }
 
     pub async fn callback_handler(
+        env_data: DotEnv,
         bot: Bot,
         q: CallbackQuery,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -476,7 +552,8 @@ pub mod tg_processing {
                 if set_rules_res {
                     remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
                     remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
-                    gen_and_send_main_menu(&bot, chat_id, chat_id_i64, user_lang_map).await;
+                    gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, user_lang_map)
+                        .await;
                 }
             }
             Some(act) if act == "custom_charset".to_string() => {
@@ -492,7 +569,14 @@ pub mod tg_processing {
                     if set_rules_res {
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
                         remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
-                        gen_and_send_main_menu(&bot, chat_id, chat_id_i64, user_lang_map).await;
+                        gen_and_send_main_menu(
+                            &env_data,
+                            &bot,
+                            chat_id,
+                            chat_id_i64,
+                            user_lang_map,
+                        )
+                        .await;
                     }
                 }
             }
@@ -629,7 +713,7 @@ pub mod tg_processing {
         }
     }
 
-    async fn change_iface_lang(bot: Bot, chat_id: ChatId, chat_id_i64: i64, lang_id: &str) {
+    async fn change_iface_lang(env_data: &DotEnv, bot: Bot, chat_id: ChatId, chat_id_i64: i64, lang_id: &str) {
         debug!("📗 User #{chat_id_i64} enter command /{lang_id}.");
 
         if check_user_rec_avail(chat_id_i64).await {
@@ -638,7 +722,7 @@ pub mod tg_processing {
             remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
 
             let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
-            gen_and_send_main_menu(&bot, chat_id, chat_id_i64, user_lang_map).await;
+            gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, user_lang_map).await;
             set_user_dialog_context(chat_id_i64, "NULL").await;
         }
     }
