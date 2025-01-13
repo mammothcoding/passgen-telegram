@@ -2,7 +2,7 @@ pub mod lang_processing {
     use crate::db_processing::db_processing::get_user_app_lang;
     use std::collections::HashMap;
 
-    pub const EN: [(&str, &str); 19] = [
+    pub const EN: [(&str, &str); 20] = [
         ("menu_lcase", "include lowercase letters"),
         ("menu_cap", "include capital letters"),
         ("menu_num", "include numbers"),
@@ -13,6 +13,7 @@ pub mod lang_processing {
         ("menu_pass_len2", ". Press to edit."),
         ("menu_pass_qua", "passwords quantity"),
         ("menu_btn_gen", "🎲 GENERATE"),
+        ("menu_btn_stat", "📊 statistics"),
         ("dialog_large_cch", "<i>⚠️ A very large custom charset size has been passed. Please enter your character set below again 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Wrong number! Please enter the number again 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unknown command!</i>"),
@@ -46,7 +47,7 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const ES: [(&str, &str); 19] = [
+    pub const ES: [(&str, &str); 20] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras mayúsculas"),
         ("menu_num", "incluir números"),
@@ -57,6 +58,7 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
         ("menu_pass_len2", ". Pulse para editar."),
         ("menu_pass_qua", "Cantidad de contraseñas"),
         ("menu_btn_gen", "🎲 GENERAR"),
+        ("menu_btn_stat", "📊 estadísticas"),
         ("dialog_large_cch", "<i>⚠️ Se ha pasado un tamaño de juego de caracteres personalizado muy grande. Vuelva a introducir su juego de caracteres 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Se ha equivocado de número. Vuelva a introducir el número 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 ¡Comando desconocido!</i>"),
@@ -90,7 +92,7 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const PT: [(&str, &str); 19] = [
+    pub const PT: [(&str, &str); 20] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras maiúsculas"),
         ("menu_num", "incluir números"),
@@ -101,6 +103,7 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
         ("menu_pass_len2", ". Prima para editar."),
         ("menu_pass_qua", "quantidade de palavras-passe"),
         ("menu_btn_gen", "🎲 GERAR"),
+        ("menu_btn_stat", "📊 estatísticas"),
         ("dialog_large_cch", "<i>⚠️ Foi passado um tamanho de conjunto de caracteres personalizado muito grande. Por favor, introduza novamente o seu conjunto de caracteres abaixo 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Número errado! Por favor, introduza o número novamente 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Comando desconhecido!</i>"),
@@ -134,7 +137,7 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const FR: [(&str, &str); 19] = [
+    pub const FR: [(&str, &str); 20] = [
         ("menu_lcase", "inclure les lettres minuscules"),
         ("menu_cap", "inclure des lettres majuscules"),
         ("menu_num", "inclure des chiffres"),
@@ -145,6 +148,7 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
         ("menu_pass_len2", ". Appuyez sur pour modifier."),
         ("menu_pass_qua", "mots de passe quantité"),
         ("menu_btn_gen", "🎲 GÉNÉRER"),
+        ("menu_btn_stat", "📊 statistiques"),
         ("dialog_large_cch", "<i>⚠️ Une taille de jeu de caractères personnalisée très importante a été transmise. Veuillez saisir à nouveau votre jeu de caractères ci-dessous 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Mauvais numéro ! Veuillez saisir à nouveau le numéro 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Commande inconnue !</i>"),
@@ -178,7 +182,7 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
                                            ☑️/start"),
     ];
 
-    pub const DE: [(&str, &str); 19] = [
+    pub const DE: [(&str, &str); 20] = [
         ("menu_lcase", "Kleinbuchstaben enthalten"),
         ("menu_cap", "Großbuchstaben enthalten"),
         ("menu_num", "Zahlen einbeziehen"),
@@ -189,6 +193,7 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
         ("menu_pass_len2", ". Drücken Sie zum Bearbeiten."),
         ("menu_pass_qua", "Passwörter Menge"),
         ("menu_btn_gen", "🎲 GENERIEREN"),
+        ("menu_btn_stat", "📊 Statistik"),
         ("dialog_large_cch", "<i>⚠️ Eine sehr große benutzerdefinierte Zeichensatzgröße wurde überschritten. Bitte geben Sie Ihren Zeichensatz unten erneut ein 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Falsche Nummer! Bitte geben Sie die Nummer erneut ein 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unbekannter Befehl!</i>"),
@@ -222,7 +227,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const RU: [(&str, &str); 19] = [
+    pub const RU: [(&str, &str); 20] = [
         ("menu_lcase", "включая маленькие буквы"),
         ("menu_cap", "включая заглавные буквы"),
         ("menu_num", "включая цифры"),
@@ -233,6 +238,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
         ("menu_pass_len2", ". Установить."),
         ("menu_pass_qua", "количество паролей"),
         ("menu_btn_gen", "🎲 СГЕНЕРИРОВАТЬ"),
+        ("menu_btn_stat", "📊 статистика"),
         ("dialog_large_cch", "<i>⚠️ Превышен размер пользовательского набора символов. Пожалуйста, введите набор символов поменьше еще раз 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Неправильное число! Пожалуйста, введите число еще раз 🔢.</i>"),
         ("dialog_unk_cmd", "<i>🚫 Неизвестная команда!</i>"),

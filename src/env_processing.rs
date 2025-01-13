@@ -20,6 +20,7 @@ pub mod env_processing {
         pub log_trigger_file_size: u64,
         pub log_files_count: u32,
         pub log_files_path: String,
+        pub webstat_socket_addr: String,
         pub tg_users_id_to_web_stat_access: Vec<i64>,
         pub web_stat_addrs: Vec<[String; 2]>,
     }
@@ -34,6 +35,7 @@ pub mod env_processing {
             let default_log_trigger_file_size = Option::from("1048576");
             let default_log_files_count = Option::from("5");
             let default_log_files_path = Option::from("log");
+            let default_webstat_socket_addr = Option::from("");
             let default_tg_user_id_to_web_stat_access = Option::from("");
             let default_web_stat_addrs = Option::from("");
 
@@ -173,6 +175,12 @@ pub mod env_processing {
                     "LOG_FILES_PATH",
                     &env_variables,
                     default_log_files_path,
+                    &mut missing_keys,
+                ),
+                webstat_socket_addr: get_env_var(
+                    "WEB_STAT_SOCKET_ADDR",
+                    &env_variables,
+                    default_webstat_socket_addr,
                     &mut missing_keys,
                 ),
                 tg_users_id_to_web_stat_access: {
