@@ -2,7 +2,7 @@
 name = "passgen-telegram"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.83"
+rust-version = "1.84"
 license = "MIT"
 description = "Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences."
 readme = "README.md"

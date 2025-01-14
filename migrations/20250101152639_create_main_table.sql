@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS main (
     gen_count int8 default 0,
     last_menu_mess_id int4,
     last_gen_mess_id int4,
+    last_stat_menu_mess_id int4,
     dialog_context varchar,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()

@@ -66,12 +66,14 @@ pub mod web_stat {
         let body_string = if token == get_web_state_token() {
             "<body style=\"background-color:black; text-align:center; color:white\">
 <h3>stat</h3>
-</body>".to_string()
+</body>"
+                .to_string()
         } else {
-"<body style=\"background-color:black; text-align:center; color:white\">
+            "<body style=\"background-color:black; text-align:center; color:white\">
 <h3>&#x26A0; Incorrect token!</h3>
 <h3>Please reload statistics menu and follow throw new link</h3>
-</body>".to_string()
+</body>"
+                .to_string()
         };
 
         let body = Body::from(body_string);

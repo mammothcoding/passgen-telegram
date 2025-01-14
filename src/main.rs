@@ -1,19 +1,23 @@
-mod db_processing;
-pub mod env_processing;
-mod lang_processing;
-mod log;
-mod rules;
-mod tg_processing;
-mod user;
-mod web_stat;
+mod engine {
+    pub mod db_processing;
+    pub mod env_processing;
+    pub mod lang_processing;
+    pub mod log;
+    pub mod tg_processing;
+    pub mod web_stat;
+}
+mod structs {
+    pub mod user;
+    pub mod rules;
+}
 
-use crate::db_processing::db_processing::init as db_pool_init;
-use crate::env_processing::env_processing::DotEnv;
-use crate::log::log::init as log_init;
-use crate::tg_processing::tg_processing::{callback_handler, message_handler, send_test_tg_mess};
-use crate::web_stat::web_stat::get_router;
+use crate::engine::db_processing::db_processing::init as db_pool_init;
+use crate::engine::env_processing::env_processing::DotEnv;
+use crate::engine::log::log::init as log_init;
+use crate::engine::tg_processing::tg_processing::{callback_handler, message_handler, send_test_tg_mess};
+use crate::engine::web_stat::web_stat::get_router;
 use ::log::info;
-use rules::rules::Rules;
+use crate::structs::rules::rules::Rules;
 use std::future::IntoFuture;
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};

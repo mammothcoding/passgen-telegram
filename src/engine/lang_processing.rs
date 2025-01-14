@@ -1,8 +1,8 @@
 pub mod lang_processing {
-    use crate::db_processing::db_processing::get_user_app_lang;
+    use crate::engine::db_processing::db_processing::get_user_app_lang;
     use std::collections::HashMap;
 
-    pub const EN: [(&str, &str); 20] = [
+    pub const EN: [(&str, &str); 22] = [
         ("menu_lcase", "include lowercase letters"),
         ("menu_cap", "include capital letters"),
         ("menu_num", "include numbers"),
@@ -14,6 +14,8 @@ pub mod lang_processing {
         ("menu_pass_qua", "passwords quantity"),
         ("menu_btn_gen", "🎲 GENERATE"),
         ("menu_btn_stat", "📊 statistics"),
+        ("menu_stat_btn_reg", "re-generate"),
+        ("menu_stat_btn_close", "close"),
         ("dialog_large_cch", "<i>⚠️ A very large custom charset size has been passed. Please enter your character set below again 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Wrong number! Please enter the number again 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unknown command!</i>"),
@@ -31,7 +33,7 @@ The allowed message length for Telegram has been exceeded!"),
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Project github page</a></u> (temporary private)</i>
 
     <u><b>Usage:</b></u>
-🔹 You can choose interface language on 🌐 line.
+🔹 You can choose interface language.
 🔹 You can create a regular password, choosing in the rules the presence of <i>small and capital letters, numbers, special characters</i>.
 🔹 You can create a <i>strong and usability password</i>:
 including the whole standard set, but the first position in the password is a capital or small letter, the last position is the symbol.
@@ -47,7 +49,7 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const ES: [(&str, &str); 20] = [
+    pub const ES: [(&str, &str); 22] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras mayúsculas"),
         ("menu_num", "incluir números"),
@@ -59,6 +61,8 @@ Excluded ambiguous characters <i>\"0oOiIlL1\"</i>.
         ("menu_pass_qua", "Cantidad de contraseñas"),
         ("menu_btn_gen", "🎲 GENERAR"),
         ("menu_btn_stat", "📊 estadísticas"),
+        ("menu_stat_btn_reg", "regenerado"),
+        ("menu_stat_btn_close", "cerca"),
         ("dialog_large_cch", "<i>⚠️ Se ha pasado un tamaño de juego de caracteres personalizado muy grande. Vuelva a introducir su juego de caracteres 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Se ha equivocado de número. Vuelva a introducir el número 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 ¡Comando desconocido!</i>"),
@@ -76,7 +80,7 @@ Intenta reducir el número de contraseñas o su longitud.
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página del proyecto en github</a></u> (privado temporal)</i>
 
     <u><b>Utilización:</b></u>
-🔹 Puedes elegir el idioma de la interfaz en la línea 🌐.
+🔹 Puedes elegir el idioma de la interfaz.
 🔹 Puedes crear una contraseña normal, eligiendo en las reglas la presencia de <i>letras minúsculas y mayúsculas, números, caracteres especiales</i>.
 🔹 Puede crear una <i>contraseña segura y fácil de usar</i>:
 incluyendo todo el conjunto estándar, pero la primera posición en la contraseña es una letra mayúscula o minúscula, la última posición es el símbolo.
@@ -92,7 +96,7 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const PT: [(&str, &str); 20] = [
+    pub const PT: [(&str, &str); 22] = [
         ("menu_lcase", "incluir letras minúsculas"),
         ("menu_cap", "incluir letras maiúsculas"),
         ("menu_num", "incluir números"),
@@ -104,6 +108,8 @@ Se excluyen los caracteres ambiguos <i>\"0oOiIlL1\"</i>.
         ("menu_pass_qua", "quantidade de palavras-passe"),
         ("menu_btn_gen", "🎲 GERAR"),
         ("menu_btn_stat", "📊 estatísticas"),
+        ("menu_stat_btn_reg", "regenerado"),
+        ("menu_stat_btn_close", "fechar"),
         ("dialog_large_cch", "<i>⚠️ Foi passado um tamanho de conjunto de caracteres personalizado muito grande. Por favor, introduza novamente o seu conjunto de caracteres abaixo 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Número errado! Por favor, introduza o número novamente 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Comando desconhecido!</i>"),
@@ -121,7 +127,7 @@ Comprimento da mensagem excedido para o Telegram!"),
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página do projeto no github</a></u> (privado temporário)</i>
 
     <u><b>Utilização:</b></u>
-🔹 Pode escolher o idioma da interface na linha 🌐.
+🔹 Pode escolher o idioma da interface.
 🔹 Pode criar uma palavra-passe normal, escolhendo nas regras a presença de <i>letras pequenas e maiúsculas, números, caracteres especiais</i>.
 🔹 Pode criar uma <i>palavra-passe forte e fácil de utilizar</i>:
 incluindo todo o conjunto padrão, mas a primeira posição na palavra-passe é uma letra maiúscula ou minúscula, a última posição é o símbolo.
@@ -137,7 +143,7 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const FR: [(&str, &str); 20] = [
+    pub const FR: [(&str, &str); 22] = [
         ("menu_lcase", "inclure les lettres minuscules"),
         ("menu_cap", "inclure des lettres majuscules"),
         ("menu_num", "inclure des chiffres"),
@@ -149,6 +155,8 @@ Caracteres ambíguos excluídos <i>\"0oOiIlL1\"</i>.
         ("menu_pass_qua", "mots de passe quantité"),
         ("menu_btn_gen", "🎲 GÉNÉRER"),
         ("menu_btn_stat", "📊 statistiques"),
+        ("menu_stat_btn_reg", "régénérer"),
+        ("menu_stat_btn_close", "fermer"),
         ("dialog_large_cch", "<i>⚠️ Une taille de jeu de caractères personnalisée très importante a été transmise. Veuillez saisir à nouveau votre jeu de caractères ci-dessous 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Mauvais numéro ! Veuillez saisir à nouveau le numéro 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Commande inconnue !</i>"),
@@ -166,7 +174,7 @@ Longueur du message dépassée pour Telegram !"),
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Page github du projet</a></u> (temporaire privé)</i>
 
     <u><b>Utilisation:</b></u>
-🔹 Vous pouvez choisir la langue de l'interface sur la ligne 🌐.
+🔹 Vous pouvez choisir la langue de l'interface.
 🔹 Vous pouvez créer un mot de passe ordinaire, en choisissant dans les règles la présence de <i>lettres minuscules et majuscules, de chiffres, de caractères spéciaux</i>.
 🔹 Vous pouvez créer un <i>mot de passe fort et facile à utiliser</i> :
 y compris l'ensemble des caractères standard, mais la première position du mot de passe est une lettre majuscule ou minuscule, la dernière position est le symbole.
@@ -182,7 +190,7 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
                                            ☑️/start"),
     ];
 
-    pub const DE: [(&str, &str); 20] = [
+    pub const DE: [(&str, &str); 22] = [
         ("menu_lcase", "Kleinbuchstaben enthalten"),
         ("menu_cap", "Großbuchstaben enthalten"),
         ("menu_num", "Zahlen einbeziehen"),
@@ -194,6 +202,8 @@ Les caractères ambigus <i>\"0oOiIlL1\"</i> sont exclus.
         ("menu_pass_qua", "Passwörter Menge"),
         ("menu_btn_gen", "🎲 GENERIEREN"),
         ("menu_btn_stat", "📊 Statistik"),
+        ("menu_stat_btn_reg", "regenerieren"),
+        ("menu_stat_btn_close", "schließen"),
         ("dialog_large_cch", "<i>⚠️ Eine sehr große benutzerdefinierte Zeichensatzgröße wurde überschritten. Bitte geben Sie Ihren Zeichensatz unten erneut ein 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Falsche Nummer! Bitte geben Sie die Nummer erneut ein 🔢</i>"),
         ("dialog_unk_cmd", "<i>🚫 Unbekannter Befehl!</i>"),
@@ -211,7 +221,7 @@ Nachrichtenlänge für Telegram überschritten!"),
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Projekt github Seite</a></u> (vorübergehend privat)</i>
 
     <u><b>Verwendung:</b></u>
-🔹 Sie können die Sprache der Schnittstelle in der Zeile 🌐 wählen.
+🔹 Sie können die Sprache der Schnittstelle wählen.
 🔹 Sie können ein normales Passwort erstellen, indem Sie in den Regeln das Vorhandensein von Klein- und Großbuchstaben, Zahlen und Sonderzeichen festlegen.
 🔹 Sie können ein <i>\"starkes & benutzerfreundliches Passwort\"</i> erstellen:
 einschließlich des gesamten Standardsatzes, aber die erste Position im Passwort ist ein Groß- oder Kleinbuchstabe, die letzte Position ist das Symbol.
@@ -227,7 +237,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub const RU: [(&str, &str); 20] = [
+    pub const RU: [(&str, &str); 22] = [
         ("menu_lcase", "включая маленькие буквы"),
         ("menu_cap", "включая заглавные буквы"),
         ("menu_num", "включая цифры"),
@@ -239,6 +249,8 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
         ("menu_pass_qua", "количество паролей"),
         ("menu_btn_gen", "🎲 СГЕНЕРИРОВАТЬ"),
         ("menu_btn_stat", "📊 статистика"),
+        ("menu_stat_btn_reg", "перегенерировать"),
+        ("menu_stat_btn_close", "закрыть"),
         ("dialog_large_cch", "<i>⚠️ Превышен размер пользовательского набора символов. Пожалуйста, введите набор символов поменьше еще раз 🔡🔢🔣</i>"),
         ("dialog_wrng_plen", "<i>🚫 Неправильное число! Пожалуйста, введите число еще раз 🔢.</i>"),
         ("dialog_unk_cmd", "<i>🚫 Неизвестная команда!</i>"),
@@ -256,7 +268,7 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
 <i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Гитхаб проекта</a></u> (временно приватный)</i>
 
     <u><b>Использование:</b></u>
-🔹 Вы можете выбрать язык интерфейса на строке 🌐.
+🔹 Вы можете выбрать язык интерфейса.
 🔹 Вы можете создать обычный пароль, регулируя правила наличия <i>малых и заглавных букв, цифр, специальных символов</i>.
 🔹 Вы можете создать <i>\"сильный и удобный пароль\"</i>:
 включающий весь стандартный набор, но первая позиция в пароле - заглавная или строчная буква, последняя позиция - символ.

@@ -1,7 +1,7 @@
 pub mod db_processing {
-    use crate::env_processing::env_processing::DotEnv;
-    use crate::lang_processing::lang_processing::obtain_user_lang_code;
-    use crate::user::user::User as user_data;
+    use crate::engine::env_processing::env_processing::DotEnv;
+    use crate::engine::lang_processing::lang_processing::obtain_user_lang_code;
+    use crate::structs::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use log::{debug, error, info, warn};
     use sqlx::types::Json;
@@ -205,13 +205,13 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Query get_last_user_mess_id successfully completed: {:?}.",
+                    "📗 Query get_last_mess_id successfully completed: {:?}.",
                     _ok
                 );
                 _ok.get(0)
             }
             Err(_err) => {
-                debug!("📙 Empty result of query get_last_user_mess_id: '{_err}'.");
+                debug!("📙 Empty result of query get_last_mess_id: '{_err}'.");
                 None
             }
         }
