@@ -48,7 +48,11 @@ pub mod tg_processing {
         }
     }
 
-    async fn main_menu(env_data: &DotEnv, chat_id: i64, user_lang_map: HashMap<&str, &str>) -> InlineKeyboardMarkup {
+    async fn main_menu(
+        env_data: &DotEnv,
+        chat_id: i64,
+        user_lang_map: HashMap<&str, &str>,
+    ) -> InlineKeyboardMarkup {
         let rules: Rules = get_pgen_rules(chat_id).await.unwrap();
 
         let enab_letters = if rules.enab_letters {
@@ -138,11 +142,12 @@ pub mod tg_processing {
 
         if !&env_data.webstat_socket_addr.is_empty()
             && !&env_data.web_stat_addrs.is_empty()
-            && env_data
-            .tg_users_id_to_web_stat_access
-            .contains(&chat_id)
+            && env_data.tg_users_id_to_web_stat_access.contains(&chat_id)
         {
-            inline_btns.push(Vec::from([InlineKeyboardButton::callback(user_lang_map["menu_btn_stat"], "statistics")]));
+            inline_btns.push(Vec::from([InlineKeyboardButton::callback(
+                user_lang_map["menu_btn_stat"],
+                "statistics",
+            )]));
         };
 
         InlineKeyboardMarkup::new(inline_btns)
@@ -508,12 +513,24 @@ pub mod tg_processing {
         set_user_dialog_context(chat_id_i64, "NULL").await;
 
         match action {
-            Some(act) if act == "iface_lang_to_en".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "en").await,
-            Some(act) if act == "iface_lang_to_es".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "es").await,
-            Some(act) if act == "iface_lang_to_pt".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "pt").await,
-            Some(act) if act == "iface_lang_to_fr".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "fr").await,
-            Some(act) if act == "iface_lang_to_de".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "de").await,
-            Some(act) if act == "iface_lang_to_ru".to_string() => change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "ru").await,
+            Some(act) if act == "iface_lang_to_en".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "en").await
+            }
+            Some(act) if act == "iface_lang_to_es".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "es").await
+            }
+            Some(act) if act == "iface_lang_to_pt".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "pt").await
+            }
+            Some(act) if act == "iface_lang_to_fr".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "fr").await
+            }
+            Some(act) if act == "iface_lang_to_de".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "de").await
+            }
+            Some(act) if act == "iface_lang_to_ru".to_string() => {
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "ru").await
+            }
             Some(act)
                 if act == "enab_letters".to_string()
                     || act == "enab_u_letters".to_string()
@@ -660,30 +677,25 @@ pub mod tg_processing {
                 increase_user_gen_count(chat_id_i64).await;
                 set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
             }
-            Some(act)
-            if act == "statistics".to_string() =>
-                {
-                    debug!("📗 User #{chat_id_i64} go to statistics menu");
+            Some(act) if act == "statistics".to_string() => {
+                debug!("📗 User #{chat_id_i64} go to statistics menu");
 
-                    if !&env_data.webstat_socket_addr.is_empty()
-                        && !&env_data.web_stat_addrs.is_empty()
-                        && env_data
+                if !&env_data.webstat_socket_addr.is_empty()
+                    && !&env_data.web_stat_addrs.is_empty()
+                    && env_data
                         .tg_users_id_to_web_stat_access
                         .contains(&chat_id_i64)
-                    {
-                        let keyboard = stat_links_menu(&env_data);
+                {
+                    let keyboard = stat_links_menu(&env_data);
 
-                        bot.send_message(
-                            chat_id,
-                            "<u><b>📶 Bot statistics web-page links:</b></u>",
-                        )
-                            .parse_mode("HTML".parse().unwrap())
-                            .reply_markup(keyboard)
-                            .await?;
-                    } else {
-                        info!("📙 User #{chat_id_i64} was tried get access to Web-stat!");
-                    }
+                    bot.send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
+                        .parse_mode("HTML".parse().unwrap())
+                        .reply_markup(keyboard)
+                        .await?;
+                } else {
+                    info!("📙 User #{chat_id_i64} was tried get access to Web-stat!");
                 }
+            }
             _ => {
                 warn!("📙 Unrecognized callback action!");
             }

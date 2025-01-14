@@ -11,9 +11,8 @@ use crate::db_processing::db_processing::init as db_pool_init;
 use crate::env_processing::env_processing::DotEnv;
 use crate::log::log::init as log_init;
 use crate::tg_processing::tg_processing::{callback_handler, message_handler, send_test_tg_mess};
-use crate::web_stat::web_stat::{gen_token, get_web_state_token};
+use crate::web_stat::web_stat::get_router;
 use ::log::info;
-use axum::{routing::get, Router};
 use rules::rules::Rules;
 use std::future::IntoFuture;
 use teloxide::Bot;
@@ -39,15 +38,14 @@ async fn main() {
     if !&env_data.webstat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
         // Web_stat
         let now_str = get_now_str();
-        let web_stat_app = Router::new().route("/", get(|| web_stat_handler()));
-        //.route("/favicon.ico", get(|| axum::response:: ::NamedFile::open("/path/to/your/image/file/../favicon.png"));
+        let web_stat_router = get_router();
 
         let web_stat_listener = tokio::net::TcpListener::bind(&env_data.webstat_socket_addr)
             .await
             .expect(&format!(
                 "[{now_str}] 🚫 Error on init listener for web_stat_server!"
             ));
-        let web_stat_serv = axum::serve(web_stat_listener, web_stat_app);
+        let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
         println!("[{now_str}] ✅ - Web_stat_server prep OK.");
         info!("✅ Web_stat_server prep OK.");
 
@@ -123,10 +121,4 @@ async fn main() {
             )
             .await;
     }
-}
-
-async fn web_stat_handler() -> String {
-    gen_token();
-    get_web_state_token().to_string()
-    //"Hello World! web_stat_handler".to_string()
 }
