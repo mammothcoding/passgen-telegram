@@ -7,6 +7,7 @@ pub mod db_processing {
     use sqlx::types::Json;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
+    use sqlx::postgres::PgRow;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
 
@@ -392,6 +393,26 @@ pub mod db_processing {
             }
             Err(_err) => {
                 error!("📙 Empty result of query get_pgen_rules: '{_err}'.");
+                None
+            }
+        }
+    }
+
+    pub async fn get_data_for_statistics(col_names: String) -> Option<Vec<PgRow>> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT ");
+        q.push(col_names);
+        q.push(" from main");
+        let res = q.build().fetch_all(pool);
+
+        match res.await {
+            Ok(_ok) => {
+                debug!("📗 Execute get_data_for_statistics successfully completed.");
+                Option::from(_ok)
+            }
+            Err(_err) => {
+                debug!("📙 Bad result of query get_data_for_statistics: '{_err}'.");
                 None
             }
         }

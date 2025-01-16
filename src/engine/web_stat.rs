@@ -9,7 +9,12 @@ pub mod web_stat {
     use passgenlib::Passgen;
     use std::env;
     use std::sync::{Mutex, OnceLock};
+    use chrono::DateTime;
+    use sqlx::{Row};
+    use sqlx::types::Json;
     use tokio_util::io::ReaderStream;
+    use crate::engine::db_processing::db_processing::get_data_for_statistics;
+    use crate::structs::user::user::User;
 
     // [0] - auth token
     // [1] - total bots users count
@@ -63,21 +68,73 @@ pub mod web_stat {
     }
 
     async fn web_stat_handler(Path(token): Path<String>) -> Body {
-        let body_string = if token == get_web_state_token() {
-            "<body style=\"background-color:black; text-align:center; color:white\">
-<h3>stat</h3>
-</body>"
-                .to_string()
+        struct WebStatTableCols {
+            created_at: DateTime<chrono::Local>,
+            updated_at: DateTime<chrono::Local>,
+            chat_id: i64,
+            user_data: Json<User>,
+            app_lang: String,
+            gen_count: i64,
+            bot_id: i64,
+        }
+        let mut body_stack = Vec::new();
+
+        if token == get_web_state_token() {
+            let col_names = [
+                "created_at",
+                "updated_at",
+                "chat_id",
+                "user_data",
+                "app_lang",
+                "gen_count",
+                "bot_id",
+            ];
+
+            body_stack.push("<body style=\"background-color:black; text-align:center; color:white\">".to_string());
+            body_stack.push("<table>".to_string());
+            body_stack.push("<tr>".to_string());
+            body_stack.push(
+                col_names.iter().map(|col_name| {
+                    ["<th>", &col_name, "</th>"].join("")
+                }).collect()
+            );
+            body_stack.push("</tr>".to_string());
+
+            let data = get_data_for_statistics(col_names.clone().join(",")).await.unwrap();
+            for row in data.iter() {
+                let row_struct = WebStatTableCols {
+                    created_at: row.get(0),
+                    updated_at: row.get(1),
+                    chat_id: row.get(2),
+                    user_data: row.get(3),
+                    app_lang: row.get(4),
+                    gen_count: row.get(5),
+                    bot_id: row.get(6)
+                };
+
+                body_stack.push([
+                    "<tr>".to_string(),
+                    ["<td>".to_string(), row_struct.created_at.format("%y-%b-%d %H:%M").to_string(), "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(), "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.chat_id.to_string(), "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.user_data.first_name.to_string(), "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.gen_count.to_string(), "</td>".to_string()].join(""),
+                    ["<td>".to_string(), row_struct.bot_id.to_string(), "</td>".to_string()].join(""),
+                    "</tr>".to_string()
+                ].join(""));
+            }
+            body_stack.push("</table>".to_string());
+            body_stack.push("</body>".to_string());
+
         } else {
-            "<body style=\"background-color:black; text-align:center; color:white\">
+            body_stack.push("<body style=\"background-color:black; text-align:center; color:white\">
 <h3>&#x26A0; Incorrect token!</h3>
 <h3>Please reload statistics menu and follow throw new link</h3>
-</body>"
-                .to_string()
+</body>".to_string());
         };
 
-        let body = Body::from(body_string);
-        body
+        Body::from(body_stack.join(""))
     }
 
     pub fn get_router() -> Router {
