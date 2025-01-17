@@ -90,7 +90,56 @@ pub mod web_stat {
                 "bot_id",
             ];
 
-            body_stack.push("<body style=\"background-color:black; text-align:center; color:white\">".to_string());
+            body_stack.push("<head>
+<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
+<title>bots-stats</title>
+<style>
+    title {
+        text-align: center;
+    }
+    body {
+        background-color: rgb(33, 44, 55);
+        color: white;
+        text-align: center;
+    }
+    table {
+        border: 3px double;
+        border-collapse: collapse;
+        width: auto;
+        margin: auto;
+    }
+    td, th {
+        padding: 10px;
+        border: 1px solid;
+        text-align: center;
+        vertical-align: center;
+    }
+</style>
+        </head>".to_string());
+            body_stack.push("<body>".to_string());
+            body_stack.push("<h2>Bots statistics:</h2>".to_string());
+
+            //<form action='postnews.php' method='post'>
+            // 		<b>sorting:</b>
+            // 		<select  name="sort" autofocus>
+            //   <option>Пункт 1</option>
+            //   <option>Пункт 2</option>
+            // </select>
+            // 		<input type="submit" name="submit" value="OK">
+            // </form>
+
+            body_stack.push("<form method=\"post\">".to_string());
+            body_stack.push("<b>&#x1F503;sorting:</b>".to_string());
+            body_stack.push("<select name=\"sort\" autofocus>".to_string());
+            body_stack.push(
+                col_names.iter().map(|col_name| {
+                    ["<option>", &col_name, "</option>"].join("")
+                }).collect()
+            );
+            body_stack.push("</select>".to_string());
+            body_stack.push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
+            body_stack.push("</form>".to_string());
+
             body_stack.push("<table>".to_string());
             body_stack.push("<tr>".to_string());
             body_stack.push(
