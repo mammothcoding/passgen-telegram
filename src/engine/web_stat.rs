@@ -1,20 +1,21 @@
 pub mod web_stat {
+    use crate::engine::db_processing::db_processing::get_data_for_statistics;
     use crate::get_now_str;
+    use crate::structs::user::user::User;
     use axum::body::Body;
-    use axum::extract::Path;
+    use axum::extract::{Path, Query};
     use axum::http::{header, StatusCode};
     use axum::response::IntoResponse;
     use axum::routing::get;
     use axum::Router;
+    use chrono::DateTime;
     use passgenlib::Passgen;
+    use serde::Deserialize;
+    use sqlx::types::Json;
+    use sqlx::Row;
     use std::env;
     use std::sync::{Mutex, OnceLock};
-    use chrono::DateTime;
-    use sqlx::{Row};
-    use sqlx::types::Json;
     use tokio_util::io::ReaderStream;
-    use crate::engine::db_processing::db_processing::get_data_for_statistics;
-    use crate::structs::user::user::User;
 
     // [0] - auth token
     // [1] - total bots users count
@@ -34,6 +35,39 @@ pub mod web_stat {
 
     pub fn get_web_state_token() -> &'static str {
         web_state().lock().unwrap()[0]
+    }
+
+    pub struct WebStatTableCols {
+        created_at: DateTime<chrono::Local>,
+        updated_at: DateTime<chrono::Local>,
+        chat_id: i64,
+        user_data: Json<User>,
+        app_lang: String,
+        gen_count: i64,
+        bot_id: i64,
+    }
+
+    #[derive(Deserialize, Debug, Clone)]
+    pub struct IndexParams {
+        pub sort: Option<String>,
+        pub desc: Option<String>,
+        pub filter_field: Option<String>,
+        pub filter_value: Option<String>,
+        pub page: Option<u32>,
+        pub per_page: Option<u32>,
+    }
+
+    impl IndexParams {
+        fn fill_according_the_request(&self) -> Self {
+            Self {
+                sort: Option::from(self.clone().sort.unwrap_or("created_at".to_string())),
+                desc: Option::from(self.clone().desc.unwrap_or("off".to_string())),
+                filter_field: Option::from(self.clone().filter_field.unwrap_or("".to_string())),
+                filter_value: Option::from(self.clone().filter_value.unwrap_or("".to_string())),
+                page: Option::from(self.clone().page.unwrap_or(1)),
+                per_page: Option::from(self.clone().per_page.unwrap_or(10)),
+            }
+        }
     }
 
     pub async fn get_favicon() -> impl IntoResponse {
@@ -67,16 +101,10 @@ pub mod web_stat {
         Ok((headers, body))
     }
 
-    async fn web_stat_handler(Path(token): Path<String>) -> Body {
-        struct WebStatTableCols {
-            created_at: DateTime<chrono::Local>,
-            updated_at: DateTime<chrono::Local>,
-            chat_id: i64,
-            user_data: Json<User>,
-            app_lang: String,
-            gen_count: i64,
-            bot_id: i64,
-        }
+    async fn web_stat_handler(
+        Path(token): Path<String>,
+        q_index_params: Query<IndexParams>,
+    ) -> Body {
         let mut body_stack = Vec::new();
 
         if token == get_web_state_token() {
@@ -89,8 +117,12 @@ pub mod web_stat {
                 "gen_count",
                 "bot_id",
             ];
+            let index_params: IndexParams =
+                q_index_params.0.fill_according_the_request();
 
-            body_stack.push("<head>
+            body_stack.push("<!doctype html><html>".to_string());
+            body_stack.push(
+                "<head>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
 <title>bots-stats</title>
 <style>
@@ -113,43 +145,84 @@ pub mod web_stat {
         border: 1px solid;
         text-align: center;
         vertical-align: center;
+        width: auto;
     }
 </style>
-        </head>".to_string());
+        </head>"
+                    .to_string(),
+            );
             body_stack.push("<body>".to_string());
             body_stack.push("<h2>Bots statistics:</h2>".to_string());
 
-            //<form action='postnews.php' method='post'>
-            // 		<b>sorting:</b>
-            // 		<select  name="sort" autofocus>
-            //   <option>Пункт 1</option>
-            //   <option>Пункт 2</option>
-            // </select>
-            // 		<input type="submit" name="submit" value="OK">
-            // </form>
+            body_stack.push("<form method=\"get\">".to_string());
 
-            body_stack.push("<form method=\"post\">".to_string());
-            body_stack.push("<b>&#x1F503;sorting:</b>".to_string());
+            body_stack.push("&#x1F503;".to_string());
             body_stack.push("<select name=\"sort\" autofocus>".to_string());
             body_stack.push(
-                col_names.iter().map(|col_name| {
-                    ["<option>", &col_name, "</option>"].join("")
-                }).collect()
+                col_names
+                    .iter()
+                    .map(|col_name| {
+                        if col_name.to_string() == index_params.sort.clone().unwrap() {
+                            ["<option selected>", &col_name, "</option>"].join("")
+                        } else {
+                            ["<option>", &col_name, "</option>"].join("")
+                        }
+                    })
+                    .collect(),
             );
             body_stack.push("</select>".to_string());
-            body_stack.push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
+
+            if index_params.desc.clone().unwrap() == "on".to_string() {
+                body_stack
+                    .push("<input type=\"checkbox\" name=\"desc\" checked />".to_string());
+                body_stack
+                    .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+            } else {
+                body_stack
+                    .push("<input type=\"checkbox\" name=\"desc\" />".to_string());
+                body_stack
+                    .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+            }
+
+            body_stack.push("         ".to_string());
+
+            body_stack.push("&#x1F50E;".to_string());
+            body_stack.push("<select name=\"filter_field\">".to_string());
+            body_stack.push(
+                col_names
+                    .iter()
+                    .map(|col_name| {
+                        if col_name.to_string() == index_params.filter_field.clone().unwrap() {
+                            ["<option selected>", &col_name, "</option>"].join("")
+                        } else {
+                            ["<option>", &col_name, "</option>"].join("")
+                        }
+                    })
+                    .collect(),
+            );
+            body_stack.push("</select>".to_string());
+
+            body_stack.push(["<input type=\"text\" id=\"filter_value\" name=\"filter_value\" maxlength=\"30\" size=\"10\" value=\"", &*index_params.filter_value.clone().unwrap(), "\"/>"].join(""));
+
+            body_stack.push("         ".to_string());
+
+            body_stack
+                .push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
             body_stack.push("</form>".to_string());
 
             body_stack.push("<table>".to_string());
             body_stack.push("<tr>".to_string());
             body_stack.push(
-                col_names.iter().map(|col_name| {
-                    ["<th>", &col_name, "</th>"].join("")
-                }).collect()
+                col_names
+                    .iter()
+                    .map(|col_name| ["<th>", &col_name, "</th>"].join(""))
+                    .collect(),
             );
             body_stack.push("</tr>".to_string());
 
-            let data = get_data_for_statistics(col_names.clone().join(",")).await.unwrap();
+            let data = get_data_for_statistics(col_names.clone().join(","), index_params)
+                .await
+                .unwrap();
             for row in data.iter() {
                 let row_struct = WebStatTableCols {
                     created_at: row.get(0),
@@ -158,29 +231,65 @@ pub mod web_stat {
                     user_data: row.get(3),
                     app_lang: row.get(4),
                     gen_count: row.get(5),
-                    bot_id: row.get(6)
+                    bot_id: row.get(6),
                 };
 
-                body_stack.push([
-                    "<tr>".to_string(),
-                    ["<td>".to_string(), row_struct.created_at.format("%y-%b-%d %H:%M").to_string(), "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(), "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.chat_id.to_string(), "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.user_data.first_name.to_string(), "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.gen_count.to_string(), "</td>".to_string()].join(""),
-                    ["<td>".to_string(), row_struct.bot_id.to_string(), "</td>".to_string()].join(""),
-                    "</tr>".to_string()
-                ].join(""));
+                body_stack.push(
+                    [
+                        "<tr>".to_string(),
+                        [
+                            "<td>".to_string(),
+                            row_struct.created_at.format("%y-%b-%d %H:%M").to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        [
+                            "<td>".to_string(),
+                            row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        [
+                            "<td>".to_string(),
+                            row_struct.chat_id.to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        [
+                            "<td>".to_string(),
+                            row_struct.user_data.first_name.to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
+                        [
+                            "<td>".to_string(),
+                            row_struct.gen_count.to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        [
+                            "<td>".to_string(),
+                            row_struct.bot_id.to_string(),
+                            "</td>".to_string(),
+                        ]
+                        .join(""),
+                        "</tr>".to_string(),
+                    ]
+                    .join(""),
+                );
             }
             body_stack.push("</table>".to_string());
             body_stack.push("</body>".to_string());
-
+            body_stack.push("</html>".to_string());
         } else {
-            body_stack.push("<body style=\"background-color:black; text-align:center; color:white\">
+            body_stack.push(
+                "<body style=\"background-color:black; text-align:center; color:white\">
 <h3>&#x26A0; Incorrect token!</h3>
 <h3>Please reload statistics menu and follow throw new link</h3>
-</body>".to_string());
+</body>"
+                    .to_string(),
+            );
         };
 
         Body::from(body_stack.join(""))

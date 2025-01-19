@@ -1,13 +1,14 @@
 pub mod db_processing {
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::lang_processing::lang_processing::obtain_user_lang_code;
+    use crate::engine::web_stat::web_stat::IndexParams;
     use crate::structs::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use log::{debug, error, info, warn};
+    use sqlx::postgres::PgRow;
     use sqlx::types::Json;
     use sqlx::{Connection, Executor, PgConnection, PgPool, Pool, Postgres, QueryBuilder, Row};
     use std::process;
-    use sqlx::postgres::PgRow;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
 
@@ -398,12 +399,31 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_data_for_statistics(col_names: String) -> Option<Vec<PgRow>> {
+    pub async fn get_data_for_statistics(
+        col_names: String,
+        index_params: IndexParams,
+    ) -> Option<Vec<PgRow>> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
-        let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT ");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("SELECT ");
         q.push(col_names);
-        q.push(" from main");
+        q.push(" FROM main");
+
+        if index_params.filter_field.clone().unwrap() != "".to_string()
+        && index_params.filter_value.clone().unwrap() != "".to_string() {
+            q.push(" WHERE ");
+            q.push(index_params.filter_field.clone().unwrap());
+            q.push(" LIKE \'%");
+            q.push(index_params.filter_value.clone().unwrap());
+            q.push("%\'");
+        }
+
+        q.push(" ORDER BY ");
+        q.push(index_params.sort.unwrap_or("created_at".to_string()));
+
+        if index_params.desc.clone().unwrap() == "on".to_string() {
+            q.push(" DESC");
+        }
+
         let res = q.build().fetch_all(pool);
 
         match res.await {

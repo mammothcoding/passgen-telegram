@@ -7,17 +7,19 @@ mod engine {
     pub mod web_stat;
 }
 mod structs {
-    pub mod user;
     pub mod rules;
+    pub mod user;
 }
 
 use crate::engine::db_processing::db_processing::init as db_pool_init;
 use crate::engine::env_processing::env_processing::DotEnv;
 use crate::engine::log::log::init as log_init;
-use crate::engine::tg_processing::tg_processing::{callback_handler, message_handler, send_test_tg_mess};
+use crate::engine::tg_processing::tg_processing::{
+    callback_handler, message_handler, send_test_tg_mess,
+};
 use crate::engine::web_stat::web_stat::get_router;
-use ::log::info;
 use crate::structs::rules::rules::Rules;
+use ::log::info;
 use std::future::IntoFuture;
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};

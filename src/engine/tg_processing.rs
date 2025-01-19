@@ -5,10 +5,10 @@ pub mod tg_processing {
         set_user_dialog_context, update_rules,
     };
     use crate::engine::env_processing::env_processing::DotEnv;
-    use crate::get_now_str;
     use crate::engine::lang_processing::lang_processing::get_lang_map;
-    use crate::structs::rules::rules::Rules;
     use crate::engine::web_stat::web_stat::{gen_token, get_web_state_token};
+    use crate::get_now_str;
+    use crate::structs::rules::rules::Rules;
     use log::{debug, error, info, warn};
     use passgenlib::Passgen;
     use std::collections::HashMap;
@@ -153,7 +153,10 @@ pub mod tg_processing {
         InlineKeyboardMarkup::new(inline_btns)
     }
 
-    fn stat_links_menu(env_data: &DotEnv, user_lang_map: HashMap<&str, &str>,) -> InlineKeyboardMarkup {
+    fn stat_links_menu(
+        env_data: &DotEnv,
+        user_lang_map: HashMap<&str, &str>,
+    ) -> InlineKeyboardMarkup {
         gen_token();
         let token: &str = get_web_state_token();
         let mut inline_btns = Vec::new();
@@ -162,7 +165,10 @@ pub mod tg_processing {
             let potential_url = Url::parse(&format!("{}/{}", &addr[1], token)[..]);
             match potential_url {
                 Ok(url) => {
-                    inline_btns.push(Vec::from([InlineKeyboardButton::url(format!("📊 {}", &addr[0]), url)]));
+                    inline_btns.push(Vec::from([InlineKeyboardButton::url(
+                        format!("📊 {}", &addr[0]),
+                        url,
+                    )]));
                 }
                 Err(err) => {
                     let now_str = get_now_str();
@@ -688,7 +694,9 @@ pub mod tg_processing {
                 increase_user_gen_count(chat_id_i64).await;
                 set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
             }
-            Some(act) if act == "statistics".to_string() || act == "menu_stat_btn_reg".to_string() => {
+            Some(act)
+                if act == "statistics".to_string() || act == "menu_stat_btn_reg".to_string() =>
+            {
                 debug!("📗 User #{chat_id_i64} go to statistics menu");
                 remove_prev_mess(&bot, chat_id, chat_id_i64, "last_stat_menu_mess_id").await;
 
@@ -699,7 +707,8 @@ pub mod tg_processing {
                         .contains(&chat_id_i64)
                 {
                     let keyboard = stat_links_menu(&env_data, user_lang_map);
-                    let mess = bot.send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
+                    let mess = bot
+                        .send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
                         .parse_mode("HTML".parse().unwrap())
                         .reply_markup(keyboard)
                         .await?;
