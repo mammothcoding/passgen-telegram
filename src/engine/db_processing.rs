@@ -412,9 +412,9 @@ pub mod db_processing {
         && index_params.filter_value.clone().unwrap() != "".to_string() {
             q.push(" WHERE ");
             q.push(index_params.filter_field.clone().unwrap());
-            q.push(" LIKE \'%");
+            q.push(" = \'");
             q.push(index_params.filter_value.clone().unwrap());
-            q.push("%\'");
+            q.push("\'");
         }
 
         q.push(" ORDER BY ");
@@ -422,6 +422,11 @@ pub mod db_processing {
 
         if index_params.desc.clone().unwrap() == "on".to_string() {
             q.push(" DESC");
+        }
+
+        if index_params.rows_count.clone().unwrap() > 0 {
+            q.push(" LIMIT ");
+            q.push(index_params.rows_count.clone().unwrap());
         }
 
         let res = q.build().fetch_all(pool);

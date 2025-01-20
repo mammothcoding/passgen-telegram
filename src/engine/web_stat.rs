@@ -21,6 +21,7 @@ pub mod web_stat {
     // [1] - total bots users count
     // [2] - total bots generated passwords
     pub fn web_state() -> &'static Mutex<[&'static str; 3]> {
+        //static VEC: OnceLock<Mutex<Vec(&'static str)>> = OnceLock::new();
         static ARRAY: OnceLock<Mutex<[&'static str; 3]>> = OnceLock::new();
         ARRAY.get_or_init(|| Mutex::new(["", "", ""]))
     }
@@ -53,19 +54,17 @@ pub mod web_stat {
         pub desc: Option<String>,
         pub filter_field: Option<String>,
         pub filter_value: Option<String>,
-        pub page: Option<u32>,
-        pub per_page: Option<u32>,
+        pub rows_count: Option<u32>
     }
 
     impl IndexParams {
         fn fill_according_the_request(&self) -> Self {
             Self {
                 sort: Option::from(self.clone().sort.unwrap_or("created_at".to_string())),
-                desc: Option::from(self.clone().desc.unwrap_or("off".to_string())),
+                desc: Option::from(self.clone().desc.unwrap_or("on".to_string())),
                 filter_field: Option::from(self.clone().filter_field.unwrap_or("".to_string())),
                 filter_value: Option::from(self.clone().filter_value.unwrap_or("".to_string())),
-                page: Option::from(self.clone().page.unwrap_or(1)),
-                per_page: Option::from(self.clone().per_page.unwrap_or(10)),
+                rows_count: Option::from(self.clone().rows_count.unwrap_or(100))
             }
         }
     }
@@ -154,132 +153,145 @@ pub mod web_stat {
             body_stack.push("<body>".to_string());
             body_stack.push("<h2>Bots statistics:</h2>".to_string());
 
-            body_stack.push("<form method=\"get\">".to_string());
+            let db_data = get_data_for_statistics(col_names.clone().join(","), index_params.clone())
+                .await;
+            match db_data {
+                Some(data) => {
+                    body_stack.push("<form method=\"get\">".to_string());
 
-            body_stack.push("&#x1F503;".to_string());
-            body_stack.push("<select name=\"sort\" autofocus>".to_string());
-            body_stack.push(
-                col_names
-                    .iter()
-                    .map(|col_name| {
-                        if col_name.to_string() == index_params.sort.clone().unwrap() {
-                            ["<option selected>", &col_name, "</option>"].join("")
-                        } else {
-                            ["<option>", &col_name, "</option>"].join("")
-                        }
-                    })
-                    .collect(),
-            );
-            body_stack.push("</select>".to_string());
+                    body_stack.push("&#x1F503;".to_string());
+                    body_stack.push("<select name=\"sort\" autofocus>".to_string());
+                    body_stack.push(
+                        col_names
+                            .iter()
+                            .map(|col_name| {
+                                if col_name.to_string() == index_params.sort.clone().unwrap() {
+                                    ["<option selected>", &col_name, "</option>"].join("")
+                                } else {
+                                    ["<option>", &col_name, "</option>"].join("")
+                                }
+                            })
+                            .collect(),
+                    );
+                    body_stack.push("</select>".to_string());
 
-            if index_params.desc.clone().unwrap() == "on".to_string() {
-                body_stack
-                    .push("<input type=\"checkbox\" name=\"desc\" checked />".to_string());
-                body_stack
-                    .push("<label for=\"desc\">&#x23EC;</label>".to_string());
-            } else {
-                body_stack
-                    .push("<input type=\"checkbox\" name=\"desc\" />".to_string());
-                body_stack
-                    .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+                    if index_params.desc.clone().unwrap() == "on".to_string() {
+                        body_stack
+                            .push("<input type=\"checkbox\" name=\"desc\" checked />".to_string());
+                        body_stack
+                            .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+                    } else {
+                        body_stack
+                            .push("<input type=\"checkbox\" name=\"desc\" />".to_string());
+                        body_stack
+                            .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+                    }
+
+                    body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
+
+                    body_stack.push("&#x1F50E;".to_string());
+                    body_stack.push("<select name=\"filter_field\">".to_string());
+                    body_stack.push(
+                        ["chat_id", "app_lang", "bot_id"]
+                            .iter()
+                            .map(|col_name| {
+                                if col_name.to_string() == index_params.filter_field.clone().unwrap() {
+                                    ["<option selected>", &col_name, "</option>"].join("")
+                                } else {
+                                    ["<option>", &col_name, "</option>"].join("")
+                                }
+                            })
+                            .collect(),
+                    );
+                    body_stack.push("</select>".to_string());
+                    body_stack.push(["<input type=\"search\" id=\"filter_value\" name=\"filter_value\" maxlength=\"30\" size=\"10\" value=\"", &*index_params.filter_value.clone().unwrap(), "\"/>"].join(""));
+
+                    body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
+
+                    body_stack.push("<label for=\"rows_count\">rows:</label>".to_string());
+                    body_stack.push(["<input type=\"number\" id=\"rows_count\" name=\"rows_count\" size=\"5\" value=\"", &*index_params.rows_count.clone().unwrap().to_string(), "\"/>"].join(""));
+
+                    body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
+
+                    body_stack
+                        .push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
+                    body_stack.push("</form>".to_string());
+
+                    body_stack.push("<br>".to_string());
+
+                    body_stack.push("<table>".to_string());
+                    body_stack.push("<tr>".to_string());
+                    body_stack.push(
+                        col_names
+                            .iter()
+                            .map(|col_name| ["<th>", &col_name, "</th>"].join(""))
+                            .collect(),
+                    );
+                    body_stack.push("</tr>".to_string());
+
+                    for row in data.iter() {
+                        let row_struct = WebStatTableCols {
+                            created_at: row.get(0),
+                            updated_at: row.get(1),
+                            chat_id: row.get(2),
+                            user_data: row.get(3),
+                            app_lang: row.get(4),
+                            gen_count: row.get(5),
+                            bot_id: row.get(6),
+                        };
+
+                        body_stack.push(
+                            [
+                                "<tr>".to_string(),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.created_at.format("%y-%b-%d %H:%M").to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.chat_id.to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.user_data.first_name.to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.gen_count.to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                [
+                                    "<td>".to_string(),
+                                    row_struct.bot_id.to_string(),
+                                    "</td>".to_string(),
+                                ]
+                                    .join(""),
+                                "</tr>".to_string(),
+                            ]
+                                .join(""),
+                        );
+                    }
+                    body_stack.push("</table>".to_string());
+                }
+                None => {
+                    body_stack.push("<h3>Incorrect input data!</h3>".to_string());
+                }
             }
 
-            body_stack.push("         ".to_string());
-
-            body_stack.push("&#x1F50E;".to_string());
-            body_stack.push("<select name=\"filter_field\">".to_string());
-            body_stack.push(
-                col_names
-                    .iter()
-                    .map(|col_name| {
-                        if col_name.to_string() == index_params.filter_field.clone().unwrap() {
-                            ["<option selected>", &col_name, "</option>"].join("")
-                        } else {
-                            ["<option>", &col_name, "</option>"].join("")
-                        }
-                    })
-                    .collect(),
-            );
-            body_stack.push("</select>".to_string());
-
-            body_stack.push(["<input type=\"text\" id=\"filter_value\" name=\"filter_value\" maxlength=\"30\" size=\"10\" value=\"", &*index_params.filter_value.clone().unwrap(), "\"/>"].join(""));
-
-            body_stack.push("         ".to_string());
-
-            body_stack
-                .push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
-            body_stack.push("</form>".to_string());
-
-            body_stack.push("<table>".to_string());
-            body_stack.push("<tr>".to_string());
-            body_stack.push(
-                col_names
-                    .iter()
-                    .map(|col_name| ["<th>", &col_name, "</th>"].join(""))
-                    .collect(),
-            );
-            body_stack.push("</tr>".to_string());
-
-            let data = get_data_for_statistics(col_names.clone().join(","), index_params)
-                .await
-                .unwrap();
-            for row in data.iter() {
-                let row_struct = WebStatTableCols {
-                    created_at: row.get(0),
-                    updated_at: row.get(1),
-                    chat_id: row.get(2),
-                    user_data: row.get(3),
-                    app_lang: row.get(4),
-                    gen_count: row.get(5),
-                    bot_id: row.get(6),
-                };
-
-                body_stack.push(
-                    [
-                        "<tr>".to_string(),
-                        [
-                            "<td>".to_string(),
-                            row_struct.created_at.format("%y-%b-%d %H:%M").to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        [
-                            "<td>".to_string(),
-                            row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        [
-                            "<td>".to_string(),
-                            row_struct.chat_id.to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        [
-                            "<td>".to_string(),
-                            row_struct.user_data.first_name.to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
-                        [
-                            "<td>".to_string(),
-                            row_struct.gen_count.to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        [
-                            "<td>".to_string(),
-                            row_struct.bot_id.to_string(),
-                            "</td>".to_string(),
-                        ]
-                        .join(""),
-                        "</tr>".to_string(),
-                    ]
-                    .join(""),
-                );
-            }
-            body_stack.push("</table>".to_string());
             body_stack.push("</body>".to_string());
             body_stack.push("</html>".to_string());
         } else {
