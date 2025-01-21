@@ -409,7 +409,8 @@ pub mod db_processing {
         q.push(" FROM main");
 
         if index_params.filter_field.clone().unwrap() != "".to_string()
-        && index_params.filter_value.clone().unwrap() != "".to_string() {
+            && index_params.filter_value.clone().unwrap() != "".to_string()
+        {
             q.push(" WHERE ");
             q.push(index_params.filter_field.clone().unwrap());
             q.push(" = \'");
@@ -420,11 +421,11 @@ pub mod db_processing {
         q.push(" ORDER BY ");
         q.push(index_params.sort.unwrap_or("created_at".to_string()));
 
-        if index_params.desc.clone().unwrap() == "on".to_string() {
+        if index_params.desc.clone().unwrap() == "off".to_string() {
             q.push(" DESC");
         }
 
-        if index_params.rows_count.clone().unwrap() > 0 {
+        if index_params.rows_count.clone().unwrap() != "".to_string() {
             q.push(" LIMIT ");
             q.push(index_params.rows_count.clone().unwrap());
         }

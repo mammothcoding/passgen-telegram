@@ -54,17 +54,17 @@ pub mod web_stat {
         pub desc: Option<String>,
         pub filter_field: Option<String>,
         pub filter_value: Option<String>,
-        pub rows_count: Option<u32>
+        pub rows_count: Option<String>,
     }
 
     impl IndexParams {
         fn fill_according_the_request(&self) -> Self {
             Self {
                 sort: Option::from(self.clone().sort.unwrap_or("created_at".to_string())),
-                desc: Option::from(self.clone().desc.unwrap_or("on".to_string())),
+                desc: Option::from(self.clone().desc.unwrap_or("off".to_string())),
                 filter_field: Option::from(self.clone().filter_field.unwrap_or("".to_string())),
                 filter_value: Option::from(self.clone().filter_value.unwrap_or("".to_string())),
-                rows_count: Option::from(self.clone().rows_count.unwrap_or(100))
+                rows_count: Option::from(self.clone().rows_count.unwrap_or("100".to_string())),
             }
         }
     }
@@ -116,8 +116,7 @@ pub mod web_stat {
                 "gen_count",
                 "bot_id",
             ];
-            let index_params: IndexParams =
-                q_index_params.0.fill_according_the_request();
+            let index_params: IndexParams = q_index_params.0.fill_according_the_request();
 
             body_stack.push("<!doctype html><html>".to_string());
             body_stack.push(
@@ -153,8 +152,8 @@ pub mod web_stat {
             body_stack.push("<body>".to_string());
             body_stack.push("<h2>Bots statistics:</h2>".to_string());
 
-            let db_data = get_data_for_statistics(col_names.clone().join(","), index_params.clone())
-                .await;
+            let db_data =
+                get_data_for_statistics(col_names.clone().join(","), index_params.clone()).await;
             match db_data {
                 Some(data) => {
                     body_stack.push("<form method=\"get\">".to_string());
@@ -176,16 +175,16 @@ pub mod web_stat {
                     body_stack.push("</select>".to_string());
 
                     if index_params.desc.clone().unwrap() == "on".to_string() {
-                        body_stack
-                            .push("<input type=\"checkbox\" name=\"desc\" checked />".to_string());
-                        body_stack
-                            .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+                        body_stack.push(
+                            "<input type=\"checkbox\" id=\"desc\" name=\"desc\" checked />"
+                                .to_string(),
+                        );
                     } else {
-                        body_stack
-                            .push("<input type=\"checkbox\" name=\"desc\" />".to_string());
-                        body_stack
-                            .push("<label for=\"desc\">&#x23EC;</label>".to_string());
+                        body_stack.push(
+                            "<input type=\"checkbox\" id=\"desc\" name=\"desc\" />".to_string(),
+                        );
                     }
+                    body_stack.push("<label for=\"desc\">&#x23EB;</label>".to_string());
 
                     body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
 
@@ -195,7 +194,9 @@ pub mod web_stat {
                         ["chat_id", "app_lang", "bot_id"]
                             .iter()
                             .map(|col_name| {
-                                if col_name.to_string() == index_params.filter_field.clone().unwrap() {
+                                if col_name.to_string()
+                                    == index_params.filter_field.clone().unwrap()
+                                {
                                     ["<option selected>", &col_name, "</option>"].join("")
                                 } else {
                                     ["<option>", &col_name, "</option>"].join("")
@@ -209,12 +210,13 @@ pub mod web_stat {
                     body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
 
                     body_stack.push("<label for=\"rows_count\">rows:</label>".to_string());
-                    body_stack.push(["<input type=\"number\" id=\"rows_count\" name=\"rows_count\" size=\"5\" value=\"", &*index_params.rows_count.clone().unwrap().to_string(), "\"/>"].join(""));
+                    body_stack.push(["<input type=\"number\" id=\"rows_count\" name=\"rows_count\" size=\"5\" value=\"", &*index_params.rows_count.clone().unwrap(), "\"/>"].join(""));
 
                     body_stack.push("<span style=\"margin: 10px\"></span>".to_string());
 
-                    body_stack
-                        .push("<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string());
+                    body_stack.push(
+                        "<input type=\"submit\" name=\"submit\" value=\"&#x2705;OK\">".to_string(),
+                    );
                     body_stack.push("</form>".to_string());
 
                     body_stack.push("<br>".to_string());
@@ -248,41 +250,46 @@ pub mod web_stat {
                                     row_struct.created_at.format("%y-%b-%d %H:%M").to_string(),
                                     "</td>".to_string(),
                                 ]
-                                    .join(""),
+                                .join(""),
                                 [
                                     "<td>".to_string(),
                                     row_struct.updated_at.format("%y-%b-%d %H:%M").to_string(),
                                     "</td>".to_string(),
                                 ]
-                                    .join(""),
+                                .join(""),
                                 [
                                     "<td>".to_string(),
                                     row_struct.chat_id.to_string(),
                                     "</td>".to_string(),
                                 ]
-                                    .join(""),
+                                .join(""),
                                 [
                                     "<td>".to_string(),
                                     row_struct.user_data.first_name.to_string(),
+                                    " | ".to_string(),
+                                    row_struct.user_data.last_name.to_string(),
+                                    " | ".to_string(),
+                                    row_struct.user_data.username.to_string(),
                                     "</td>".to_string(),
                                 ]
+                                .join(""),
+                                ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()]
                                     .join(""),
-                                ["<td>".to_string(), row_struct.app_lang, "</td>".to_string()].join(""),
                                 [
                                     "<td>".to_string(),
                                     row_struct.gen_count.to_string(),
                                     "</td>".to_string(),
                                 ]
-                                    .join(""),
+                                .join(""),
                                 [
                                     "<td>".to_string(),
                                     row_struct.bot_id.to_string(),
                                     "</td>".to_string(),
                                 ]
-                                    .join(""),
+                                .join(""),
                                 "</tr>".to_string(),
                             ]
-                                .join(""),
+                            .join(""),
                         );
                     }
                     body_stack.push("</table>".to_string());
