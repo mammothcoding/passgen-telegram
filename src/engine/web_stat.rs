@@ -3,7 +3,7 @@ pub mod web_stat {
     use crate::get_now_str;
     use crate::structs::user::user::User;
     use axum::body::Body;
-    use axum::extract::{Path, Query};
+    use axum::extract::{Path, Query, State};
     use axum::http::{header, StatusCode};
     use axum::response::IntoResponse;
     use axum::routing::get;
@@ -16,6 +16,7 @@ pub mod web_stat {
     use std::env;
     use std::sync::{Mutex, OnceLock};
     use tokio_util::io::ReaderStream;
+    use crate::engine::env_processing::env_processing::DotEnv;
 
     // [0] - auth token
     // [1] - total bots users count
@@ -103,6 +104,7 @@ pub mod web_stat {
     async fn web_stat_handler(
         Path(token): Path<String>,
         q_index_params: Query<IndexParams>,
+        State(env): State<DotEnv>
     ) -> Body {
         let mut body_stack = Vec::new();
 
@@ -283,7 +285,13 @@ pub mod web_stat {
                                 .join(""),
                                 [
                                     "<td>".to_string(),
-                                    row_struct.bot_id.to_string(),
+                                    {
+                                        let key = row_struct.bot_id.clone().to_string();
+                                        match env.web_stat_bots_usernames.get(&key) {
+                                            Some(val) => val.clone(),
+                                            _ => key
+                                        }
+                                    },
                                     "</td>".to_string(),
                                 ]
                                 .join(""),
@@ -314,9 +322,10 @@ pub mod web_stat {
         Body::from(body_stack.join(""))
     }
 
-    pub fn get_router() -> Router {
+    pub fn get_router(env: &DotEnv) -> Router {
         Router::new()
             .route("/{token}", get(web_stat_handler))
             .route("/favicon.ico", get(get_favicon))
+            .with_state(env.clone())
     }
 }

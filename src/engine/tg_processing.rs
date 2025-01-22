@@ -142,7 +142,7 @@ pub mod tg_processing {
 
         if !&env_data.webstat_socket_addr.is_empty()
             && !&env_data.web_stat_addrs.is_empty()
-            && env_data.tg_users_id_to_web_stat_access.contains(&chat_id)
+            && env_data.web_stat_access_tg_user_ids.contains(&chat_id)
         {
             inline_btns.push(Vec::from([InlineKeyboardButton::callback(
                 user_lang_map["menu_btn_stat"],
@@ -702,9 +702,7 @@ pub mod tg_processing {
 
                 if !&env_data.webstat_socket_addr.is_empty()
                     && !&env_data.web_stat_addrs.is_empty()
-                    && env_data
-                        .tg_users_id_to_web_stat_access
-                        .contains(&chat_id_i64)
+                    && env_data.web_stat_access_tg_user_ids.contains(&chat_id_i64)
                 {
                     let keyboard = stat_links_menu(&env_data, user_lang_map);
                     let mess = bot

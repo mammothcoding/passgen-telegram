@@ -44,7 +44,7 @@ async fn main() {
     if !&env_data.webstat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
         // Web_stat
         let now_str = get_now_str();
-        let web_stat_router = get_router();
+        let web_stat_router = get_router(&env_data);
 
         let web_stat_listener = tokio::net::TcpListener::bind(&env_data.webstat_socket_addr)
             .await
@@ -57,14 +57,14 @@ async fn main() {
 
         // Setup teloxide listener.
         let now_str = get_now_str();
-        let bot: Bot = Bot::new(&env_data.tg_bot_token);
+        let bot: Bot = Bot::new(&env_data.tg_bots_identifiers[0][0]);
         let listener = webhooks::axum(
             bot.clone(),
             webhooks::Options::new(
-                (&env_data.tg_bot_socket_addr).parse().expect(&format!(
+                (&env_data.tg_bots_identifiers[0][2]).parse().expect(&format!(
                     "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
                 )),
-                (&env_data.tg_web_hook_url).parse().expect(&format!(
+                (&env_data.tg_bots_identifiers[0][1]).parse().expect(&format!(
                     "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
                 )),
             ),
@@ -94,14 +94,14 @@ async fn main() {
     } else {
         // Setup teloxide listener.
         let now_str = get_now_str();
-        let bot: Bot = Bot::new(&env_data.tg_bot_token);
+        let bot: Bot = Bot::new(&env_data.tg_bots_identifiers[0][0]);
         let listener = webhooks::axum(
             bot.clone(),
             webhooks::Options::new(
-                (&env_data.tg_bot_socket_addr).parse().expect(&format!(
+                (&env_data.tg_bots_identifiers[0][2]).parse().expect(&format!(
                     "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
                 )),
-                (&env_data.tg_web_hook_url).parse().expect(&format!(
+                (&env_data.tg_bots_identifiers[0][1]).parse().expect(&format!(
                     "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
                 )),
             ),

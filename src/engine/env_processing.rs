@@ -7,9 +7,7 @@ pub mod env_processing {
 
     #[derive(Clone)]
     pub struct DotEnv {
-        pub tg_bot_token: String,
-        pub tg_web_hook_url: String,
-        pub tg_bot_socket_addr: String,
+        pub tg_bots_identifiers: Vec<[String; 3]>,
         pub db_host: String,
         pub db_port: u32,
         pub db_name: String,
@@ -21,8 +19,9 @@ pub mod env_processing {
         pub log_files_count: u32,
         pub log_files_path: String,
         pub webstat_socket_addr: String,
-        pub tg_users_id_to_web_stat_access: Vec<i64>,
+        pub web_stat_access_tg_user_ids: Vec<i64>,
         pub web_stat_addrs: Vec<[String; 2]>,
+        pub web_stat_bots_usernames: HashMap<String, String>,
     }
 
     impl DotEnv {
@@ -36,7 +35,7 @@ pub mod env_processing {
             let default_log_files_count = Option::from("5");
             let default_log_files_path = Option::from("log");
             let default_webstat_socket_addr = Option::from("");
-            let default_tg_user_id_to_web_stat_access = Option::from("");
+            let default_web_stat_access_tg_user_ids = Option::from("");
             let default_web_stat_addrs = Option::from("");
 
             let now_str = get_now_str();
@@ -46,6 +45,7 @@ pub mod env_processing {
             let env_variables: HashMap<String, String> =
                 read_file(env_path).expect(&format!("[{now_str}] 🚫 - Could not load .env file!"));
             let mut missing_keys: Vec<&str> = Vec::new();
+            let mut web_stat_bots_usernames: HashMap<String, String> = HashMap::new();
 
             fn get_env_var<'a>(
                 key: &'a str,
@@ -84,24 +84,48 @@ pub mod env_processing {
             }
 
             let res = DotEnv {
-                tg_bot_token: get_env_var(
-                    "TELEGRAM_BOT_TOKEN",
-                    &env_variables,
-                    None,
-                    &mut missing_keys,
-                ),
-                tg_web_hook_url: get_env_var(
-                    "TELEGRAM_WEBHOOK_URL",
-                    &env_variables,
-                    None,
-                    &mut missing_keys,
-                ),
-                tg_bot_socket_addr: get_env_var(
-                    "TELEGRAM_BOT_SOCKET_ADDR",
-                    &env_variables,
-                    None,
-                    &mut missing_keys,
-                ),
+                tg_bots_identifiers: {
+                    let mut res_identifiers: Vec<[String; 3]> = Vec::new();
+                    let from_env = get_env_var(
+                        "TG_BOTS_IDENTIFIERS",
+                        &env_variables,
+                        None,
+                        &mut missing_keys,
+                    );
+
+                    let potential_identifiers = &from_env[..].split(',').collect::<Vec<&str>>();
+                    for potential_identifier in potential_identifiers {
+                        if potential_identifier.contains('|') {
+                            let identifier = potential_identifier
+                                .trim()
+                                .split('|')
+                                .collect::<Vec<&str>>();
+                            if identifier.len() == 4
+                                && !identifier[0].is_empty()
+                                && !identifier[1].is_empty()
+                                && !identifier[2].is_empty()
+                                && !identifier[3].is_empty()
+                            {
+                                res_identifiers.push([
+                                    identifier[0].to_string(),
+                                    identifier[1].to_string(),
+                                    identifier[2].to_string(),
+                                ]);
+                                web_stat_bots_usernames.insert(
+                                    identifier[0].split(':').collect::<Vec<&str>>()[0].to_string(),
+                                    identifier[3].to_string(),
+                                );
+                            } else {
+                                missing_keys.push("TG_BOTS_IDENTIFIERS");
+                                break;
+                            }
+                        } else {
+                            missing_keys.push("TG_BOTS_IDENTIFIERS");
+                            break;
+                        }
+                    }
+                    res_identifiers
+                },
                 db_host: get_env_var("DB_HOST", &env_variables, None, &mut missing_keys),
                 db_port: {
                     match get_env_var(
@@ -183,12 +207,12 @@ pub mod env_processing {
                     default_webstat_socket_addr,
                     &mut missing_keys,
                 ),
-                tg_users_id_to_web_stat_access: {
+                web_stat_access_tg_user_ids: {
                     let mut users_ids: Vec<i64> = Vec::new();
                     let from_env = get_env_var(
-                        "TG_USERS_ID_TO_WEB_STAT_ACCESS",
+                        "WEB_STAT_ACCESS_TG_USER_IDS",
                         &env_variables,
-                        default_tg_user_id_to_web_stat_access,
+                        default_web_stat_access_tg_user_ids,
                         &mut missing_keys,
                     );
                     if from_env.is_empty() {
@@ -199,7 +223,7 @@ pub mod env_processing {
                             match potential_id.trim().parse::<i64>() {
                                 Ok(id) => users_ids.push(id),
                                 Err(_) => {
-                                    missing_keys.push("TG_USERS_ID_TO_WEB_STAT_ACCESS");
+                                    missing_keys.push("WEB_STAT_ACCESS_TG_USER_IDS");
                                     break;
                                 }
                             }
@@ -236,6 +260,7 @@ pub mod env_processing {
                         res_pairs
                     }
                 },
+                web_stat_bots_usernames,
             };
 
             let now_str = get_now_str();
