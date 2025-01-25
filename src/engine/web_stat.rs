@@ -1,5 +1,6 @@
 pub mod web_stat {
     use crate::engine::db_processing::db_processing::get_data_for_statistics;
+    use crate::engine::env_processing::env_processing::DotEnv;
     use crate::get_now_str;
     use crate::structs::user::user::User;
     use axum::body::Body;
@@ -10,13 +11,12 @@ pub mod web_stat {
     use axum::Router;
     use chrono::DateTime;
     use passgenlib::Passgen;
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
     use sqlx::types::Json;
     use sqlx::Row;
     use std::env;
     use std::sync::{Mutex, OnceLock};
     use tokio_util::io::ReaderStream;
-    use crate::engine::env_processing::env_processing::DotEnv;
 
     // [0] - auth token
     // [1] - total bots users count
@@ -58,6 +58,15 @@ pub mod web_stat {
         pub rows_count: Option<String>,
     }
 
+    #[derive(Serialize)]
+    struct GithubBadgeJson {
+        schemaVersion: u8,
+        label: String,
+        message: String,
+        color: String,
+
+    }
+
     impl IndexParams {
         fn fill_according_the_request(&self) -> Self {
             Self {
@@ -68,6 +77,21 @@ pub mod web_stat {
                 rows_count: Option::from(self.clone().rows_count.unwrap_or("100".to_string())),
             }
         }
+    }
+
+    pub async fn get_total_bots_users_count() -> impl IntoResponse {
+        let now_str = get_now_str();
+
+        let badge_data = GithubBadgeJson {
+            schemaVersion: 1,
+            label: "total users".to_string(),
+            message: "111".to_string(),
+            color: "green".to_string(),
+        };
+        let body = Json(badge_data).encode_to_string().unwrap();
+        let headers = [(header::CONTENT_TYPE, "application/json")];
+
+        (headers, body)
     }
 
     pub async fn get_favicon() -> impl IntoResponse {
@@ -104,7 +128,7 @@ pub mod web_stat {
     async fn web_stat_handler(
         Path(token): Path<String>,
         q_index_params: Query<IndexParams>,
-        State(env): State<DotEnv>
+        State(env): State<DotEnv>,
     ) -> Body {
         let mut body_stack = Vec::new();
 
@@ -289,7 +313,7 @@ pub mod web_stat {
                                         let key = row_struct.bot_id.clone().to_string();
                                         match env.web_stat_bots_usernames.get(&key) {
                                             Some(val) => val.clone(),
-                                            _ => key
+                                            _ => key,
                                         }
                                     },
                                     "</td>".to_string(),
@@ -324,8 +348,9 @@ pub mod web_stat {
 
     pub fn get_router(env: &DotEnv) -> Router {
         Router::new()
-            .route("/{token}", get(web_stat_handler))
             .route("/favicon.ico", get(get_favicon))
+            .route("/total-bots-users-count", get(get_total_bots_users_count))
+            .route("/{token}", get(web_stat_handler))
             .with_state(env.clone())
     }
 }

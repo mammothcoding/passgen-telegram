@@ -20,7 +20,8 @@ use crate::engine::tg_processing::tg_processing::{
 use crate::engine::web_stat::web_stat::get_router;
 use crate::structs::rules::rules::Rules;
 use ::log::info;
-use std::future::IntoFuture;
+use futures::future::join_all;
+use std::future::{Future, IntoFuture};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};
 
@@ -61,12 +62,16 @@ async fn main() {
         let listener = webhooks::axum(
             bot.clone(),
             webhooks::Options::new(
-                (&env_data.tg_bots_identifiers[0][2]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
-                )),
-                (&env_data.tg_bots_identifiers[0][1]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
-                )),
+                (&env_data.tg_bots_identifiers[0][2])
+                    .parse()
+                    .expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
+                    )),
+                (&env_data.tg_bots_identifiers[0][1])
+                    .parse()
+                    .expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
+                    )),
             ),
         )
         .await
@@ -89,42 +94,49 @@ async fn main() {
             )),
         );
 
+        //join_all()
         let (_error1, _error2) =
             tokio::join!(web_stat_serv.into_future(), telox_disp.into_future());
     } else {
-        // Setup teloxide listener.
-        let now_str = get_now_str();
-        let bot: Bot = Bot::new(&env_data.tg_bots_identifiers[0][0]);
-        let listener = webhooks::axum(
-            bot.clone(),
-            webhooks::Options::new(
-                (&env_data.tg_bots_identifiers[0][2]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
-                )),
-                (&env_data.tg_bots_identifiers[0][1]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
-                )),
-            ),
-        )
-        .await
-        .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
 
-        let telox_handler = dptree::entry()
-            .branch(Update::filter_message().endpoint(message_handler))
-            .branch(Update::filter_callback_query().endpoint(callback_handler));
+        /*let mut telox_disps/*: impl Future<Output=()>+Sized*/ = Vec::new();
 
-        send_test_tg_mess(&bot).await;
+        for tg_bots_identifier in &env_data.tg_bots_identifiers.clone() {
+            // Setup teloxide listener.
+            let now_str = get_now_str();
+            let bot: Bot = Bot::new(&tg_bots_identifier[0]);
+            let listener = webhooks::axum(
+                bot.clone(),
+                webhooks::Options::new(
+                    (&tg_bots_identifier[2]).parse().expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
+                    )),
+                    (&tg_bots_identifier[1]).parse().expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
+                    )),
+                ),
+            )
+            .await
+            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
 
-        Dispatcher::builder(bot.clone(), telox_handler)
-            .dependencies(dptree::deps![env_data])
-            //.enable_ctrlc_handler()
-            .build()
-            .dispatch_with_listener(
+            let telox_handler = dptree::entry()
+                .branch(Update::filter_message().endpoint(message_handler))
+                .branch(Update::filter_callback_query().endpoint(callback_handler));
+
+            send_test_tg_mess(&bot).await;
+
+            let mut telox_binding = Dispatcher::builder(bot.clone(), telox_handler)
+                .dependencies(dptree::deps![&env_data])
+                //.enable_ctrlc_handler()
+                .build();
+            telox_disps.push(telox_binding.dispatch_with_listener(
                 listener,
                 LoggingErrorHandler::with_custom_text(&format!(
                     "[{now_str}] 🚫 - An error from the update listener"
                 )),
-            )
-            .await;
+            ));
+        }
+
+        join_all(telox_disps).await*/
     }
 }
