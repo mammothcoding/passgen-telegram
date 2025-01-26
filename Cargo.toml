@@ -80,6 +80,8 @@ gzip = "0.1"
 url = "2.5.3"
 mime_guess = "2.0.5"
 futures = "0.3.31"
+clap = { version = "4.5.23", features = ["derive"] }
+clap_derive = "4.5.18"
 
 # Reduce the size of the executable  file:
 [profile.release]

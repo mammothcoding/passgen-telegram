@@ -22,8 +22,32 @@ use crate::structs::rules::rules::Rules;
 use ::log::info;
 use futures::future::join_all;
 use std::future::{Future, IntoFuture};
+use std::{env, process};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};
+use clap::{arg, Parser};
+use clap_derive::Parser as ClapParser;
+use log::error;
+use std::process::{Command, Stdio};
+
+#[derive(ClapParser, Debug)]
+#[command(
+    version,
+    verbatim_doc_comment,
+    about = "\n\n⚙️ Passgen-telegram server core."
+)]
+struct Args {
+    /// 🚀 Servicename to run.
+    /// Variants:
+    /// bot         - start the bot service (In addition, it will be necessary to pass the bot id);
+    /// stat        - start the bots statistics web-service.
+    #[arg(short, long, default_value = "", verbatim_doc_comment)]
+    service: String,
+
+    /// Telegram bot id (123456789).
+    #[arg(short, long, default_value = "", verbatim_doc_comment)]
+    id: String
+}
 
 pub fn get_now_str() -> String {
     chrono::Local::now()
@@ -42,82 +66,50 @@ async fn main() {
     // DB
     db_pool_init(&env_data).await;
 
-    if !&env_data.webstat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
-        // Web_stat
-        let now_str = get_now_str();
-        let web_stat_router = get_router(&env_data);
+    // Run
+    let args: Args = Args::parse();
+    let service = args.service.as_str().as_ref();
 
-        let web_stat_listener = tokio::net::TcpListener::bind(&env_data.webstat_socket_addr)
-            .await
-            .expect(&format!(
-                "[{now_str}] 🚫 Error on init listener for web_stat_server!"
-            ));
-        let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
-        println!("[{now_str}] ✅ - Web_stat_server prep OK.");
-        info!("✅ Web_stat_server prep OK.");
+    match service {
+        "bot" => {
+            let bot_id = if !args.id.is_empty() {
+                args.id
+            } else {
+                let now_str = get_now_str();
+                println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                error!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                process::exit(1);
+            };
 
-        // Setup teloxide listener.
-        let now_str = get_now_str();
-        let bot: Bot = Bot::new(&env_data.tg_bots_identifiers[0][0]);
-        let listener = webhooks::axum(
-            bot.clone(),
-            webhooks::Options::new(
-                (&env_data.tg_bots_identifiers[0][2])
-                    .parse()
-                    .expect(&format!(
-                        "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
-                    )),
-                (&env_data.tg_bots_identifiers[0][1])
-                    .parse()
-                    .expect(&format!(
-                        "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
-                    )),
-            ),
-        )
-        .await
-        .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+            let mut tg_bot_identifiers: Vec<String> = Vec::new();
+            for identifier_arr in &env_data.tg_bots_identifiers {
+                if bot_id == identifier_arr[0].split(':').collect::<Vec<&str>>()[0].to_string() {
+                    tg_bot_identifiers = identifier_arr.clone().into_iter().collect();
+                }
+            }
+            if tg_bot_identifiers.is_empty() {
+                let now_str = get_now_str();
+                println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                error!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                process::exit(1);
+            }
 
-        let telox_handler = dptree::entry()
-            .branch(Update::filter_message().endpoint(message_handler))
-            .branch(Update::filter_callback_query().endpoint(callback_handler));
-
-        send_test_tg_mess(&bot).await;
-
-        let mut telox_binding = Dispatcher::builder(bot.clone(), telox_handler)
-            .dependencies(dptree::deps![env_data])
-            //.enable_ctrlc_handler()
-            .build();
-        let telox_disp = telox_binding.dispatch_with_listener(
-            listener,
-            LoggingErrorHandler::with_custom_text(&format!(
-                "[{now_str}] 🚫 - An error from the update listener"
-            )),
-        );
-
-        //join_all()
-        let (_error1, _error2) =
-            tokio::join!(web_stat_serv.into_future(), telox_disp.into_future());
-    } else {
-
-        /*let mut telox_disps/*: impl Future<Output=()>+Sized*/ = Vec::new();
-
-        for tg_bots_identifier in &env_data.tg_bots_identifiers.clone() {
             // Setup teloxide listener.
             let now_str = get_now_str();
-            let bot: Bot = Bot::new(&tg_bots_identifier[0]);
+            let bot: Bot = Bot::new(&tg_bot_identifiers[0]);
             let listener = webhooks::axum(
                 bot.clone(),
                 webhooks::Options::new(
-                    (&tg_bots_identifier[2]).parse().expect(&format!(
+                    (&tg_bot_identifiers[2]).parse().expect(&format!(
                         "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
                     )),
-                    (&tg_bots_identifier[1]).parse().expect(&format!(
+                    (&tg_bot_identifiers[1]).parse().expect(&format!(
                         "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
                     )),
                 ),
             )
-            .await
-            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+                .await
+                .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
 
             let telox_handler = dptree::entry()
                 .branch(Update::filter_message().endpoint(message_handler))
@@ -125,18 +117,64 @@ async fn main() {
 
             send_test_tg_mess(&bot).await;
 
-            let mut telox_binding = Dispatcher::builder(bot.clone(), telox_handler)
-                .dependencies(dptree::deps![&env_data])
+            Dispatcher::builder(bot.clone(), telox_handler)
+                .dependencies(dptree::deps![env_data.clone()])
                 //.enable_ctrlc_handler()
-                .build();
-            telox_disps.push(telox_binding.dispatch_with_listener(
-                listener,
-                LoggingErrorHandler::with_custom_text(&format!(
-                    "[{now_str}] 🚫 - An error from the update listener"
-                )),
-            ));
-        }
+                .build()
+                .dispatch_with_listener(
+                    listener,
+                    LoggingErrorHandler::with_custom_text(&format!(
+                        "[{now_str}] 🚫 - An error from the update listener"
+                    )),
+                )
+                .await;
+        },
+        "stat" => {
+            if !&env_data.webstat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
+                let now_str = get_now_str();
+                let web_stat_router = get_router(&env_data);
 
-        join_all(telox_disps).await*/
+                let web_stat_listener = tokio::net::TcpListener::bind(&env_data.webstat_socket_addr)
+                    .await
+                    .expect(&format!(
+                        "[{now_str}] 🚫 Error on init listener for web_stat_server!"
+                    ));
+                let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
+                println!("[{now_str}] ✅ - Web_stat_server prep OK.");
+                info!("✅ Web_stat_server prep OK.");
+                web_stat_serv.await;/*.expect(&format!(
+                    "[{now_str}] 🚫 Error on start web_stat_server!"
+                ))*/;
+            } else {
+                let now_str = get_now_str();
+                println!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
+                error!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
+                process::exit(1);
+            }
+        },
+        _ => {
+            let now_str = get_now_str();
+            let service_file_name = env!("CARGO_PKG_NAME");
+            let cur_exe_binding = env::current_exe()
+                .expect(&format!("[{now_str}] 🚫 - Get cur_exe_binding path error!"));
+            let service_full_path = &cur_exe_binding.with_file_name(service_file_name);
+
+            /*Command::new(service_full_path)
+                .args(["-s", "stat"])
+                .spawn()
+                .expect("failed to execute process");*/
+
+            for identifier_arr in &env_data.tg_bots_identifiers {
+                let bot_id = identifier_arr[0].split(':').collect::<Vec<&str>>()[0].to_string();
+                Command::new(service_full_path)
+                    .args(["-s", "bot", "-i", &bot_id[..]])
+                    .spawn()
+                    .expect(&format!("[{now_str}] 🚫 - Failed to execute bot-service process for bot_id: #{bot_id}!"));
+            }
+            Command::new(service_full_path)
+                .args(["-s", "stat"])
+                .spawn()
+                .expect("failed to execute process");
+        }
     }
 }
