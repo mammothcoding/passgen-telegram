@@ -29,6 +29,7 @@ use clap::{arg, Parser};
 use clap_derive::Parser as ClapParser;
 use log::error;
 use std::process::{Command, Stdio};
+use tokio::signal;
 
 #[derive(ClapParser, Debug)]
 #[command(
@@ -159,11 +160,7 @@ async fn main() {
                 .expect(&format!("[{now_str}] 🚫 - Get cur_exe_binding path error!"));
             let service_full_path = &cur_exe_binding.with_file_name(service_file_name);
 
-            /*Command::new(service_full_path)
-                .args(["-s", "stat"])
-                .spawn()
-                .expect("failed to execute process");*/
-
+            // Start bot-service processes.
             for identifier_arr in &env_data.tg_bots_identifiers {
                 let bot_id = identifier_arr[0].split(':').collect::<Vec<&str>>()[0].to_string();
                 Command::new(service_full_path)
@@ -171,10 +168,18 @@ async fn main() {
                     .spawn()
                     .expect(&format!("[{now_str}] 🚫 - Failed to execute bot-service process for bot_id: #{bot_id}!"));
             }
+
+            // Start web_stat-service process.
             Command::new(service_full_path)
                 .args(["-s", "stat"])
                 .spawn()
-                .expect("failed to execute process");
+                .expect(&format!("[{now_str}] 🚫 - Failed to execute web_stat-service process!"));
+
+            let ctrlc = signal::ctrl_c().await;
+            match ctrlc {
+                Ok(_) => println!("Kill all child processes. Bye! ⏻"),
+                Err(_err) => println!("Error on ctrl-c received! {}", _err)
+            }
         }
     }
 }
