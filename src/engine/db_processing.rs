@@ -1,7 +1,7 @@
 pub mod db_processing {
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::lang_processing::lang_processing::obtain_user_lang_code;
-    use crate::engine::web_stat::web_stat::IndexParams;
+    use crate::engine::web_stat::web_stat::{web_state, IndexParams};
     use crate::structs::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use log::{debug, error, info, warn};
@@ -440,6 +440,80 @@ pub mod db_processing {
             Err(_err) => {
                 debug!("📙 Bad result of query get_data_for_statistics: '{_err}'.");
                 None
+            }
+        }
+    }
+
+    pub async fn web_state_token_existence_check(token: &str) -> bool {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) from web_stat WHERE token = ");
+        q.push_bind(token);
+        let res = q.build().fetch_one(pool);
+
+        match res.await {
+            Ok(_ok) => {
+                debug!(
+                    "📗 Check token existence successfully completed: {:?}.",
+                    &_ok
+                );
+                if _ok.get(0) > 0 { true } else { false }
+            }
+            Err(_err) => {
+                debug!("📙 Empty result of query token: '{_err}'.");
+                false
+            }
+        }
+    }
+
+    pub async fn get_web_state_token(chat_id: i64, bot_id: i64) -> Option<String> {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT token from web_stat WHERE chat_id = ");
+        q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
+        q.push(" LIMIT 1");
+        let res = q.build().fetch_one(pool);
+
+        match res.await {
+            Ok(_ok) => {
+                debug!(
+                    "📗 Get token for user #{chat_id} on bot #{bot_id} successfully completed: {:?}.",
+                    &_ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                debug!("📙 Empty result of query token: '{_err}'.");
+                None
+            }
+        }
+    }
+
+    pub async fn set_web_state_token(chat_id: i64, bot_id: i64, token: &str) {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("INSERT INTO web_stat (chat_id, bot_id, token) VALUES (");
+        q.push_bind(chat_id);
+        q.push(",");
+        q.push_bind(bot_id);
+        q.push(",");
+        q.push_bind(token);
+        q.push(") ON CONFLICT (chat_id, bot_id) DO UPDATE SET token = ");
+        q.push_bind(token);
+        q.push(", updated_at = current_timestamp");
+        let res = q.build().execute(pool).await;
+
+        let now_str = get_now_str();
+        match res {
+            Ok(_ok) => debug!("📗 Set web_stat token for user #{chat_id} on bot #{bot_id}"),
+            Err(_err) => {
+                println!(
+                    "[{now_str}] 📕 - Error on updating web_stat token for user #{chat_id} on bot #{bot_id}: '{_err}'."
+                );
+                error!(
+                    "📕 Error on updating web_stat token for user #{chat_id} on bot #{bot_id}: '{_err}'."
+                );
             }
         }
     }

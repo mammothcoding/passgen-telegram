@@ -18,7 +18,7 @@ pub mod env_processing {
         pub log_trigger_file_size: u64,
         pub log_files_count: u32,
         pub log_files_path: String,
-        pub webstat_socket_addr: String,
+        pub web_stat_socket_addr: String,
         pub web_stat_access_tg_user_ids: Vec<i64>,
         pub web_stat_addrs: Vec<[String; 2]>,
         pub web_stat_bots_usernames: HashMap<String, String>,
@@ -201,7 +201,7 @@ pub mod env_processing {
                     default_log_files_path,
                     &mut missing_keys,
                 ),
-                webstat_socket_addr: get_env_var(
+                web_stat_socket_addr: get_env_var(
                     "WEB_STAT_SOCKET_ADDR",
                     &env_variables,
                     default_webstat_socket_addr,

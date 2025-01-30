@@ -1,5 +1,5 @@
 pub mod web_stat {
-    use crate::engine::db_processing::db_processing::get_data_for_statistics;
+    use crate::engine::db_processing::db_processing::{get_data_for_statistics, set_web_state_token, web_state_token_existence_check};
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::get_now_str;
     use crate::structs::user::user::User;
@@ -18,25 +18,20 @@ pub mod web_stat {
     use std::sync::{Mutex, OnceLock};
     use tokio_util::io::ReaderStream;
 
-    // [0] - auth token
-    // [1] - total bots users count
-    // [2] - total bots generated passwords
-    pub fn web_state() -> &'static Mutex<[&'static str; 3]> {
+    // [0] - total bots users count
+    // [1] - total bots generated passwords
+    pub fn web_state() -> &'static Mutex<[&'static str; 2]> {
         //static VEC: OnceLock<Mutex<Vec(&'static str)>> = OnceLock::new();
-        static ARRAY: OnceLock<Mutex<[&'static str; 3]>> = OnceLock::new();
-        ARRAY.get_or_init(|| Mutex::new(["", "", ""]))
+        static ARRAY: OnceLock<Mutex<[&'static str; 2]>> = OnceLock::new();
+        ARRAY.get_or_init(|| Mutex::new(["", ""]))
     }
 
-    pub fn gen_token() {
+    pub fn create_token(chat_id: i64, bot_id: i64) -> String {
         let token = Passgen::new()
             .set_enabled_letters(true)
             .set_enabled_numbers(true)
             .generate(30);
-        web_state().lock().unwrap()[0] = token.leak();
-    }
-
-    pub fn get_web_state_token() -> &'static str {
-        web_state().lock().unwrap()[0]
+        set_web_state_token(chat_id, bot_id, &token.leak())
     }
 
     pub struct WebStatTableCols {
@@ -79,7 +74,7 @@ pub mod web_stat {
         }
     }
 
-    pub async fn get_total_bots_users_count() -> impl IntoResponse {
+    pub async fn get_total_user_count_of_bots() -> impl IntoResponse {
         let now_str = get_now_str();
 
         let badge_data = GithubBadgeJson {
@@ -132,7 +127,7 @@ pub mod web_stat {
     ) -> Body {
         let mut body_stack = Vec::new();
 
-        if token == get_web_state_token() {
+        if web_state_token_existence_check(&token[..]) {
             let col_names = [
                 "created_at",
                 "updated_at",
@@ -349,7 +344,7 @@ pub mod web_stat {
     pub fn get_router(env: &DotEnv) -> Router {
         Router::new()
             .route("/favicon.ico", get(get_favicon))
-            .route("/total-bots-users-count", get(get_total_bots_users_count))
+            .route("/total-user-count-of-bots", get(get_total_user_count_of_bots))
             .route("/{token}", get(web_stat_handler))
             .with_state(env.clone())
     }

@@ -1,12 +1,8 @@
 pub mod tg_processing {
-    use crate::engine::db_processing::db_processing::{
-        check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_data,
-        get_user_dialog_context, increase_user_gen_count, set_last_mess_id, set_user_app_lang,
-        set_user_dialog_context, update_rules,
-    };
+    use crate::engine::db_processing::db_processing::{check_user_rec_avail, cr_new_user_rec, get_last_mess_id, get_pgen_rules, get_user_data, get_user_dialog_context, get_web_state_token, increase_user_gen_count, set_last_mess_id, set_user_app_lang, set_user_dialog_context, update_rules};
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::lang_processing::lang_processing::get_lang_map;
-    use crate::engine::web_stat::web_stat::{gen_token, get_web_state_token};
+    use crate::engine::web_stat::web_stat::create_token;
     use crate::get_now_str;
     use crate::structs::rules::rules::Rules;
     use log::{debug, error, info, warn};
@@ -140,7 +136,7 @@ pub mod tg_processing {
             )]),
         ]);
 
-        if !&env_data.webstat_socket_addr.is_empty()
+        if !&env_data.web_stat_socket_addr.is_empty()
             && !&env_data.web_stat_addrs.is_empty()
             && env_data.web_stat_access_tg_user_ids.contains(&chat_id)
         {
@@ -153,46 +149,60 @@ pub mod tg_processing {
         InlineKeyboardMarkup::new(inline_btns)
     }
 
-    fn stat_links_menu(
+    async fn web_stat_links_menu(
         env_data: &DotEnv,
         user_lang_map: HashMap<&str, &str>,
-    ) -> InlineKeyboardMarkup {
-        gen_token();
-        let token: &str = get_web_state_token();
-        let mut inline_btns = Vec::new();
+        chat_id: i64,
+        bot_id: i64
+    ) -> Option<InlineKeyboardMarkup> {
+        create_token(chat_id: i64, bot_id: i64);
+        let get_token_result = get_web_state_token(chat_id: i64, bot_id: i64).await;
+        match get_token_result {
+            Some(token) => {
+                let mut inline_btns = Vec::new();
 
-        for addr in &env_data.web_stat_addrs {
-            let potential_url = Url::parse(&format!("{}/{}", &addr[1], token)[..]);
-            match potential_url {
-                Ok(url) => {
-                    inline_btns.push(Vec::from([InlineKeyboardButton::url(
-                        format!("📊 {}", &addr[0]),
-                        url,
-                    )]));
+                for addr in &env_data.web_stat_addrs {
+                    let potential_url = Url::parse(&format!("{}/{}", &addr[1], token)[..]);
+                    match potential_url {
+                        Ok(url) => {
+                            inline_btns.push(Vec::from([InlineKeyboardButton::url(
+                                format!("📊 {}", &addr[0]),
+                                url,
+                            )]));
+                        }
+                        Err(err) => {
+                            let now_str = get_now_str();
+                            println!(
+                                "[{now_str}] 🚫 - Error on parsing URL for web-stat link: {}",
+                                err
+                            );
+                            error!("🚫 Error on parsing URL for web-stat link: {}", err);
+                        }
+                    }
                 }
-                Err(err) => {
-                    let now_str = get_now_str();
-                    println!(
-                        "[{now_str}] 🚫 - Error on parsing URL for web-stat link: {}",
-                        err
-                    );
-                    error!("🚫 Error on parsing URL for web-stat link: {}", err);
-                }
+
+                inline_btns.push(Vec::from([
+                    InlineKeyboardButton::callback(
+                        format!("{} 🔁", user_lang_map["menu_stat_btn_reg"]),
+                        "menu_stat_btn_reg",
+                    ),
+                    InlineKeyboardButton::callback(
+                        format!("📴 {}", user_lang_map["menu_stat_btn_close"]),
+                        "menu_stat_btn_close",
+                    ),
+                ]));
+
+                Option::from(InlineKeyboardMarkup::new(inline_btns))
+            }
+            (_) => {
+                let now_str = get_now_str();
+                println!("[{now_str}] 🚫 - None result on get_token for web-stat links");
+                error!("🚫 None result on get_token for web-stat links");
+                None
             }
         }
 
-        inline_btns.push(Vec::from([
-            InlineKeyboardButton::callback(
-                format!("{} 🔁", user_lang_map["menu_stat_btn_reg"]),
-                "menu_stat_btn_reg",
-            ),
-            InlineKeyboardButton::callback(
-                format!("📴 {}", user_lang_map["menu_stat_btn_close"]),
-                "menu_stat_btn_close",
-            ),
-        ]));
 
-        InlineKeyboardMarkup::new(inline_btns)
     }
 
     async fn gen_and_send_main_menu(
@@ -518,6 +528,7 @@ pub mod tg_processing {
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let chat_id: ChatId = q.message.clone().unwrap().chat().id;
         let chat_id_i64: i64 = chat_id.clone().to_string().parse::<i64>().unwrap();
+        let bot_id_i64: i64 = bot.token().split(':').collect::<Vec<&str>>()[0].parse::<i64>().unwrap();
         let action = q.data;
         let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
 
@@ -700,19 +711,24 @@ pub mod tg_processing {
                 debug!("📗 User #{chat_id_i64} go to statistics menu");
                 remove_prev_mess(&bot, chat_id, chat_id_i64, "last_stat_menu_mess_id").await;
 
-                if !&env_data.webstat_socket_addr.is_empty()
+                if !&env_data.web_stat_socket_addr.is_empty()
                     && !&env_data.web_stat_addrs.is_empty()
                     && env_data.web_stat_access_tg_user_ids.contains(&chat_id_i64)
                 {
-                    let keyboard = stat_links_menu(&env_data, user_lang_map);
-                    let mess = bot
-                        .send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
-                        .parse_mode("HTML".parse().unwrap())
-                        .reply_markup(keyboard)
-                        .await?;
+                    let web_stat_links_menu_result = web_stat_links_menu(&env_data, user_lang_map, chat_id_i64, bot_id_i64).await;
+                    match web_stat_links_menu_result {
+                        Some(keyboard) => {
+                            let mess = bot
+                                .send_message(chat_id, "<u><b>📶 Bot statistics web-page links:</b></u>")
+                                .parse_mode("HTML".parse().unwrap())
+                                .reply_markup(keyboard)
+                                .await?;
 
-                    let mess_id: i32 = mess.id.to_string().parse().unwrap();
-                    set_last_mess_id(chat_id_i64, mess_id, "last_stat_menu_mess_id").await;
+                            let mess_id: i32 = mess.id.to_string().parse().unwrap();
+                            set_last_mess_id(chat_id_i64, mess_id, "last_stat_menu_mess_id").await;
+                        },
+                        (_) => {}
+                    }
                 } else {
                     info!("📙 User #{chat_id_i64} was tried get access to Web-stat!");
                 }

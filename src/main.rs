@@ -131,11 +131,11 @@ async fn main() {
                 .await;
         },
         "stat" => {
-            if !&env_data.webstat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
+            if !&env_data.web_stat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
                 let now_str = get_now_str();
                 let web_stat_router = get_router(&env_data);
 
-                let web_stat_listener = tokio::net::TcpListener::bind(&env_data.webstat_socket_addr)
+                let web_stat_listener = tokio::net::TcpListener::bind(&env_data.web_stat_socket_addr)
                     .await
                     .expect(&format!(
                         "[{now_str}] 🚫 Error on init listener for web_stat_server!"
