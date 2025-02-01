@@ -91,11 +91,13 @@ pub mod db_processing {
         info!("✅ DB init is OK.");
     }
 
-    pub async fn check_user_rec_avail(chat_id: i64) -> bool {
+    pub async fn check_user_rec_avail(chat_id: i64, bot_id: i64) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT id from main WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
@@ -161,11 +163,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_pgen_rules(chat_id: i64) -> Option<Rules> {
+    pub async fn get_pgen_rules(chat_id: i64, bot_id: i64) -> Option<Rules> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT pgen_rules as Json from main WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool).await;
 
@@ -196,11 +200,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_last_mess_id(chat_id: i64, id_field: &str) -> Option<i32> {
+    pub async fn get_last_mess_id(chat_id: i64, bot_id: i64, id_field: &str) -> Option<i32> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new(format!("SELECT {id_field} from main WHERE chat_id = "));
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
@@ -219,7 +225,7 @@ pub mod db_processing {
         }
     }
 
-    pub async fn set_last_mess_id(chat_id: i64, mess_id: i32, id_field: &str) {
+    pub async fn set_last_mess_id(chat_id: i64, bot_id: i64, mess_id: i32, id_field: &str) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new(format!("UPDATE main SET {id_field} = "));
@@ -227,6 +233,8 @@ pub mod db_processing {
         q.push(", updated_at = current_timestamp");
         q.push(" WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         let res = q.build().execute(pool).await;
 
         match res {
@@ -235,12 +243,14 @@ pub mod db_processing {
         }
     }
 
-    pub async fn update_rules(chat_id: i64, rules: Rules) -> bool {
+    pub async fn update_rules(chat_id: i64, bot_id: i64, rules: Rules) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET pgen_rules = ");
         q.push_bind(Json(rules));
         q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         let res = q.build().execute(pool).await;
 
         let now_str = get_now_str();
@@ -259,13 +269,15 @@ pub mod db_processing {
         }
     }
 
-    pub async fn increase_user_gen_count(chat_id: i64) {
+    pub async fn increase_user_gen_count(chat_id: i64, bot_id: i64) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
             "UPDATE main SET gen_count = gen_count + 1, updated_at = current_timestamp",
         );
         q.push(" WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         let res = q.build().execute(pool).await;
 
         match res {
@@ -274,11 +286,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_user_dialog_context(chat_id: i64) -> Option<String> {
+    pub async fn get_user_dialog_context(chat_id: i64, bot_id: i64) -> Option<String> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT dialog_context from main WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
@@ -297,12 +311,14 @@ pub mod db_processing {
         }
     }
 
-    pub async fn set_user_dialog_context(chat_id: i64, context: &str) {
+    pub async fn set_user_dialog_context(chat_id: i64, bot_id: i64, context: &str) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET dialog_context = ");
         q.push_bind(context);
         q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         let res = q.build().execute(pool).await;
 
         let now_str = get_now_str();
@@ -319,11 +335,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_user_app_lang(chat_id: i64) -> Option<String> {
+    pub async fn get_user_app_lang(chat_id: i64, bot_id: i64) -> Option<String> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT app_lang from main WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool);
 
@@ -342,12 +360,14 @@ pub mod db_processing {
         }
     }
 
-    pub async fn set_user_app_lang(chat_id: i64, app_lang: &str) {
+    pub async fn set_user_app_lang(chat_id: i64, bot_id: i64, app_lang: &str) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE main SET app_lang = ");
         q.push_bind(app_lang);
         q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         let res = q.build().execute(pool).await;
 
         let now_str = get_now_str();
@@ -364,11 +384,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn get_user_data(chat_id: i64) -> Option<user_data> {
+    pub async fn get_user_data(chat_id: i64, bot_id: i64) -> Option<user_data> {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT user_data as Json from main WHERE chat_id = ");
         q.push_bind(chat_id);
+        q.push(" AND bot_id = ");
+        q.push_bind(bot_id);
         q.push(" LIMIT 1");
         let res = q.build().fetch_one(pool).await;
 

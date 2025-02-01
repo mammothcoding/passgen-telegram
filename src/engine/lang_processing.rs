@@ -284,8 +284,8 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
                                            ☑️/start"),
     ];
 
-    pub async fn get_lang_map(chat_id: i64) -> HashMap<&'static str, &'static str> {
-        let user_lang: String = match get_user_app_lang(chat_id).await {
+    pub async fn get_lang_map(chat_id: i64, bot_id: i64) -> HashMap<&'static str, &'static str> {
+        let user_lang: String = match get_user_app_lang(chat_id, bot_id).await {
             Some(lang_id) => lang_id,
             _ => "en".to_string(),
         };

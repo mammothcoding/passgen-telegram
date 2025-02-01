@@ -51,9 +51,10 @@ pub mod tg_processing {
     async fn main_menu(
         env_data: &DotEnv,
         chat_id: i64,
+        bot_id: i64,
         user_lang_map: HashMap<&str, &str>,
     ) -> InlineKeyboardMarkup {
-        let rules: Rules = get_pgen_rules(chat_id).await.unwrap();
+        let rules: Rules = get_pgen_rules(chat_id, bot_id).await.unwrap();
 
         let enab_letters = if rules.enab_letters {
             &format!("✅ {}", user_lang_map["menu_lcase"])[..]
@@ -207,9 +208,10 @@ pub mod tg_processing {
         bot: &Bot,
         chat_id: ChatId,
         chat_id_i64: i64,
+        bot_id_i64: i64,
         user_lang_map: HashMap<&str, &str>,
     ) {
-        let keyboard = main_menu(&env_data, chat_id_i64, user_lang_map).await;
+        let keyboard = main_menu(&env_data, chat_id_i64, bot_id_i64, user_lang_map).await;
 
         let mess = bot
             .send_message(chat_id, "⚙ <b>McPassgen</b>               /help❔")
@@ -221,7 +223,7 @@ pub mod tg_processing {
             Ok(_ok) => {
                 debug!("📗 New menu for user #{chat_id_i64} was sent.");
                 let mess_id: i32 = _ok.id.to_string().parse().unwrap();
-                set_last_mess_id(chat_id_i64, mess_id, "last_menu_mess_id").await;
+                set_last_mess_id(chat_id_i64, bot_id_i64, mess_id, "last_menu_mess_id").await;
             }
             Err(_err) => {
                 warn!("📕 Error on sending of new menu for user #{chat_id_i64}: '{_err}'.");
@@ -241,7 +243,7 @@ pub mod tg_processing {
             let bot_id_i64: i64 = bot.token().split(':').collect::<Vec<&str>>()[0]
                 .parse::<i64>()
                 .unwrap();
-            let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
+            let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64, bot_id_i64).await;
 
             match BotCommands::parse(text, me.username()) {
                 Ok(Command::Help) => {
@@ -249,22 +251,23 @@ pub mod tg_processing {
                     bot.send_message(chat_id, user_lang_map["help"])
                         .parse_mode("HTML".parse().unwrap())
                         .await?;
-                    set_user_dialog_context(chat_id_i64, "NULL").await;
+                    set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                 }
                 Ok(Command::Start) => {
                     debug!("📗 User #{chat_id_i64} enter command /start.");
-                    if check_user_rec_avail(chat_id_i64).await {
-                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                    if check_user_rec_avail(chat_id_i64, bot_id_i64).await {
+                        remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id").await;
+                        remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_menu_mess_id").await;
                         gen_and_send_main_menu(
                             &env_data,
                             &bot,
                             chat_id,
                             chat_id_i64,
+                            bot_id_i64,
                             user_lang_map,
                         )
                         .await;
-                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                        set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                     } else {
                         match msg.from {
                             Some(from) => {
@@ -272,16 +275,17 @@ pub mod tg_processing {
                                     cr_new_user_rec(chat_id_i64, bot_id_i64, from).await;
                                 if cr_result {
                                     let user_lang_map: HashMap<&str, &str> =
-                                        get_lang_map(chat_id_i64).await;
+                                        get_lang_map(chat_id_i64, bot_id_i64).await;
                                     gen_and_send_main_menu(
                                         &env_data,
                                         &bot,
                                         chat_id,
                                         chat_id_i64,
+                                        bot_id_i64,
                                         user_lang_map,
                                     )
                                     .await;
-                                    set_user_dialog_context(chat_id_i64, "NULL").await;
+                                    set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                                 } else {
                                     bot.send_message(
                                         chat_id,
@@ -303,24 +307,25 @@ pub mod tg_processing {
                 }
                 // Unknown command or text for necessary context or necessary text action
                 _ => {
-                    let context = get_user_dialog_context(chat_id_i64).await;
+                    let context = get_user_dialog_context(chat_id_i64, bot_id_i64).await;
                     match context {
                         Some(context) if context == "custom_charset".to_string() => {
                             match text.parse::<String>() {
                                 Ok(c_chset) => {
                                     if c_chset.len() < 1000 {
                                         let mut rules: Rules =
-                                            get_pgen_rules(chat_id_i64).await.unwrap();
+                                            get_pgen_rules(chat_id_i64, bot_id_i64).await.unwrap();
                                         rules.custom_charset = c_chset;
                                         rules.reconfigure_rules_according_selector(context);
-                                        let set_rules_res = update_rules(chat_id_i64, rules).await;
+                                        let set_rules_res = update_rules(chat_id_i64, bot_id_i64, rules).await;
 
                                         if set_rules_res {
-                                            set_user_dialog_context(chat_id_i64, "NULL").await;
+                                            set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                                             remove_prev_mess(
                                                 &bot,
                                                 chat_id,
                                                 chat_id_i64,
+                                                bot_id_i64,
                                                 "last_gen_mess_id",
                                             )
                                             .await;
@@ -328,6 +333,7 @@ pub mod tg_processing {
                                                 &bot,
                                                 chat_id,
                                                 chat_id_i64,
+                                                bot_id_i64,
                                                 "last_menu_mess_id",
                                             )
                                             .await;
@@ -336,6 +342,7 @@ pub mod tg_processing {
                                                 &bot,
                                                 chat_id,
                                                 chat_id_i64,
+                                                bot_id_i64,
                                                 user_lang_map,
                                             )
                                             .await;
@@ -384,16 +391,17 @@ pub mod tg_processing {
                                         pwd_len = 4;
                                     }
                                     let mut rules: Rules =
-                                        get_pgen_rules(chat_id_i64).await.unwrap();
+                                        get_pgen_rules(chat_id_i64, bot_id_i64).await.unwrap();
                                     rules.pwd_len = pwd_len;
-                                    let set_rules_res = update_rules(chat_id_i64, rules).await;
+                                    let set_rules_res = update_rules(chat_id_i64, bot_id_i64, rules).await;
 
                                     if set_rules_res {
-                                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                                        set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                                         remove_prev_mess(
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             "last_gen_mess_id",
                                         )
                                         .await;
@@ -401,6 +409,7 @@ pub mod tg_processing {
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             "last_menu_mess_id",
                                         )
                                         .await;
@@ -409,6 +418,7 @@ pub mod tg_processing {
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             user_lang_map,
                                         )
                                         .await;
@@ -444,16 +454,17 @@ pub mod tg_processing {
                                         pwd_quantity = 1;
                                     }
                                     let mut rules: Rules =
-                                        get_pgen_rules(chat_id_i64).await.unwrap();
+                                        get_pgen_rules(chat_id_i64, bot_id_i64).await.unwrap();
                                     rules.pwd_quantity = pwd_quantity;
-                                    let set_rules_res = update_rules(chat_id_i64, rules).await;
+                                    let set_rules_res = update_rules(chat_id_i64, bot_id_i64, rules).await;
 
                                     if set_rules_res {
-                                        set_user_dialog_context(chat_id_i64, "NULL").await;
+                                        set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
                                         remove_prev_mess(
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             "last_gen_mess_id",
                                         )
                                         .await;
@@ -461,6 +472,7 @@ pub mod tg_processing {
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             "last_menu_mess_id",
                                         )
                                         .await;
@@ -469,6 +481,7 @@ pub mod tg_processing {
                                             &bot,
                                             chat_id,
                                             chat_id_i64,
+                                            bot_id_i64,
                                             user_lang_map,
                                         )
                                         .await;
@@ -499,7 +512,7 @@ pub mod tg_processing {
                         None => {}
                         _ => {
                             if text == "🧹 pwd" {
-                                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id")
+                                remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id")
                                     .await;
                                 bot.delete_message(chat_id, msg.id).await?;
                                 debug!("📗 User #{chat_id_i64} send \"🧹 pwd\". Last mess with pwd was deleted.");
@@ -531,34 +544,34 @@ pub mod tg_processing {
             .parse::<i64>()
             .unwrap();
         let action = q.data;
-        let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
+        let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64, bot_id_i64).await;
 
-        if !check_user_rec_avail(chat_id_i64).await {
+        if !check_user_rec_avail(chat_id_i64, bot_id_i64).await {
             return Ok(());
         }
 
-        let mut rules: Rules = get_pgen_rules(chat_id_i64).await.unwrap();
+        let mut rules: Rules = get_pgen_rules(chat_id_i64, bot_id_i64).await.unwrap();
 
-        set_user_dialog_context(chat_id_i64, "NULL").await;
+        set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
 
         match action {
             Some(act) if act == "iface_lang_to_en".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "en").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "en").await
             }
             Some(act) if act == "iface_lang_to_es".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "es").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "es").await
             }
             Some(act) if act == "iface_lang_to_pt".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "pt").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "pt").await
             }
             Some(act) if act == "iface_lang_to_fr".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "fr").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "fr").await
             }
             Some(act) if act == "iface_lang_to_de".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "de").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "de").await
             }
             Some(act) if act == "iface_lang_to_ru".to_string() => {
-                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, "ru").await
+                change_iface_lang(&env_data, bot, chat_id, chat_id_i64, bot_id_i64, "ru").await
             }
             Some(act)
                 if act == "enab_letters".to_string()
@@ -568,32 +581,33 @@ pub mod tg_processing {
                     || act == "enab_strong_usab".to_string() =>
             {
                 rules.reconfigure_rules_according_selector(act.clone());
-                let set_rules_res = update_rules(chat_id_i64, rules).await;
+                let set_rules_res = update_rules(chat_id_i64, bot_id_i64, rules).await;
                 if set_rules_res {
-                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-                    remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
-                    gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, user_lang_map)
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id").await;
+                    remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_menu_mess_id").await;
+                    gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, bot_id_i64, user_lang_map)
                         .await;
                 }
             }
             Some(act) if act == "custom_charset".to_string() => {
                 if rules.custom_charset == "" {
-                    set_user_dialog_context(chat_id_i64, "custom_charset").await;
+                    set_user_dialog_context(chat_id_i64, bot_id_i64, "custom_charset").await;
                     bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_cch"])
                         .parse_mode("HTML".parse().unwrap())
                         .await?;
                 } else {
                     rules.custom_charset = "".to_string();
                     rules.reconfigure_rules_according_selector(act.clone());
-                    let set_rules_res = update_rules(chat_id_i64, rules).await;
+                    let set_rules_res = update_rules(chat_id_i64, bot_id_i64, rules).await;
                     if set_rules_res {
-                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-                        remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+                        remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id").await;
+                        remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_menu_mess_id").await;
                         gen_and_send_main_menu(
                             &env_data,
                             &bot,
                             chat_id,
                             chat_id_i64,
+                            bot_id_i64,
                             user_lang_map,
                         )
                         .await;
@@ -601,19 +615,19 @@ pub mod tg_processing {
                 }
             }
             Some(act) if act == "pwd_len".to_string() => {
-                set_user_dialog_context(chat_id_i64, "pwd_len").await;
+                set_user_dialog_context(chat_id_i64, bot_id_i64, "pwd_len").await;
                 bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_plen"])
                     .parse_mode("HTML".parse().unwrap())
                     .await?;
             }
             Some(act) if act == "pwd_quantity".to_string() => {
-                set_user_dialog_context(chat_id_i64, "pwd_quantity").await;
+                set_user_dialog_context(chat_id_i64, bot_id_i64, "pwd_quantity").await;
                 bot.send_message(chat_id.clone(), user_lang_map["dialog_ent_pqua"])
                     .parse_mode("HTML".parse().unwrap())
                     .await?;
             }
             Some(act) if act == "generate".to_string() => {
-                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
+                remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id").await;
 
                 let mut pgen_from_rules: Passgen = Passgen {
                     enab_letters: rules.enab_letters,
@@ -681,7 +695,7 @@ pub mod tg_processing {
                         );
                         mess
                     } else {
-                        let user_data = get_user_data(chat_id_i64).await.unwrap();
+                        let user_data = get_user_data(chat_id_i64, bot_id_i64).await.unwrap();
                         let mess = bot
                             .send_message(
                                 chat_id.clone(),
@@ -703,14 +717,14 @@ pub mod tg_processing {
                 };
 
                 let mess_id: i32 = mess_result.id.to_string().parse().unwrap();
-                increase_user_gen_count(chat_id_i64).await;
-                set_last_mess_id(chat_id_i64, mess_id, "last_gen_mess_id").await;
+                increase_user_gen_count(chat_id_i64, bot_id_i64).await;
+                set_last_mess_id(chat_id_i64, bot_id_i64, mess_id, "last_gen_mess_id").await;
             }
             Some(act)
                 if act == "statistics".to_string() || act == "menu_stat_btn_regen".to_string() =>
             {
                 debug!("📗 User #{chat_id_i64} go to statistics menu");
-                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_stat_menu_mess_id").await;
+                remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_stat_menu_mess_id").await;
 
                 if !&env_data.web_stat_socket_addr.is_empty()
                     && !&env_data.web_stat_addrs.is_empty()
@@ -731,7 +745,7 @@ pub mod tg_processing {
                                 .await?;
 
                             let mess_id: i32 = mess.id.to_string().parse().unwrap();
-                            set_last_mess_id(chat_id_i64, mess_id, "last_stat_menu_mess_id").await;
+                            set_last_mess_id(chat_id_i64, bot_id_i64, mess_id, "last_stat_menu_mess_id").await;
                         }
                         _ => {}
                     }
@@ -741,7 +755,7 @@ pub mod tg_processing {
             }
             Some(act) if act == "menu_stat_btn_close".to_string() => {
                 debug!("📗 User #{chat_id_i64} close statistics menu");
-                remove_prev_mess(&bot, chat_id, chat_id_i64, "last_stat_menu_mess_id").await;
+                remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_stat_menu_mess_id").await;
             }
             _ => {
                 warn!("📙 Unrecognized callback action!");
@@ -750,8 +764,8 @@ pub mod tg_processing {
         Ok(())
     }
 
-    async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, id_field: &str) {
-        let prev_mess_id = get_last_mess_id(chat_id_i64, id_field).await;
+    async fn remove_prev_mess(bot: &Bot, chat_id: ChatId, chat_id_i64: i64, bot_id_i64: i64, id_field: &str) {
+        let prev_mess_id = get_last_mess_id(chat_id_i64, bot_id_i64, id_field).await;
         match prev_mess_id {
             Some(mess_id) => {
                 let del_res = bot.delete_message(chat_id, MessageId(mess_id)).await;
@@ -775,18 +789,19 @@ pub mod tg_processing {
         bot: Bot,
         chat_id: ChatId,
         chat_id_i64: i64,
+        bot_id_i64: i64,
         lang_id: &str,
     ) {
         debug!("📗 User #{chat_id_i64} enter command /{lang_id}.");
 
-        if check_user_rec_avail(chat_id_i64).await {
-            set_user_app_lang(chat_id_i64, lang_id).await;
-            remove_prev_mess(&bot, chat_id, chat_id_i64, "last_gen_mess_id").await;
-            remove_prev_mess(&bot, chat_id, chat_id_i64, "last_menu_mess_id").await;
+        if check_user_rec_avail(chat_id_i64, bot_id_i64).await {
+            set_user_app_lang(chat_id_i64, bot_id_i64, lang_id).await;
+            remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_gen_mess_id").await;
+            remove_prev_mess(&bot, chat_id, chat_id_i64, bot_id_i64, "last_menu_mess_id").await;
 
-            let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64).await;
-            gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, user_lang_map).await;
-            set_user_dialog_context(chat_id_i64, "NULL").await;
+            let user_lang_map: HashMap<&str, &str> = get_lang_map(chat_id_i64, bot_id_i64).await;
+            gen_and_send_main_menu(&env_data, &bot, chat_id, chat_id_i64, bot_id_i64, user_lang_map).await;
+            set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
         }
     }
 }
