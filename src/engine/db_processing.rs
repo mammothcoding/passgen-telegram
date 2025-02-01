@@ -1,7 +1,7 @@
 pub mod db_processing {
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::lang_processing::lang_processing::obtain_user_lang_code;
-    use crate::engine::web_stat::web_stat::{web_state, IndexParams};
+    use crate::engine::web_stat::web_stat::IndexParams;
     use crate::structs::user::user::User as user_data;
     use crate::{get_now_str, Rules};
     use log::{debug, error, info, warn};
@@ -447,9 +447,9 @@ pub mod db_processing {
     pub async fn web_state_token_existence_check(token: &str) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT COUNT(*) from web_stat WHERE token = ");
+            QueryBuilder::new("SELECT id from web_stat WHERE token = ");
         q.push_bind(token);
-        let res = q.build().fetch_one(pool);
+        let res = q.build().execute(pool);
 
         match res.await {
             Ok(_ok) => {
@@ -457,7 +457,11 @@ pub mod db_processing {
                     "📗 Check token existence successfully completed: {:?}.",
                     &_ok
                 );
-                if _ok.get(0) > 0 { true } else { false }
+                if _ok.rows_affected() > 0 {
+                    true
+                } else {
+                    false
+                }
             }
             Err(_err) => {
                 debug!("📙 Empty result of query token: '{_err}'.");
@@ -493,7 +497,8 @@ pub mod db_processing {
 
     pub async fn set_web_state_token(chat_id: i64, bot_id: i64, token: &str) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
-        let mut q: QueryBuilder<Postgres> = QueryBuilder::new("INSERT INTO web_stat (chat_id, bot_id, token) VALUES (");
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("INSERT INTO web_stat (chat_id, bot_id, token) VALUES (");
         q.push_bind(chat_id);
         q.push(",");
         q.push_bind(bot_id);

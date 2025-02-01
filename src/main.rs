@@ -20,15 +20,15 @@ use crate::engine::tg_processing::tg_processing::{
 use crate::engine::web_stat::web_stat::get_router;
 use crate::structs::rules::rules::Rules;
 use ::log::info;
+use clap::{arg, Parser};
+use clap_derive::Parser as ClapParser;
 use futures::future::join_all;
+use log::error;
 use std::future::{Future, IntoFuture};
+use std::process::Command;
 use std::{env, process};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};
-use clap::{arg, Parser};
-use clap_derive::Parser as ClapParser;
-use log::error;
-use std::process::{Command, Stdio};
 use tokio::signal;
 
 #[derive(ClapParser, Debug)]
@@ -47,7 +47,7 @@ struct Args {
 
     /// Telegram bot id (123456789).
     #[arg(short, long, default_value = "", verbatim_doc_comment)]
-    id: String
+    id: String,
 }
 
 pub fn get_now_str() -> String {
@@ -109,8 +109,8 @@ async fn main() {
                     )),
                 ),
             )
-                .await
-                .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+            .await
+            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
 
             let telox_handler = dptree::entry()
                 .branch(Update::filter_message().endpoint(message_handler))
@@ -129,30 +129,31 @@ async fn main() {
                     )),
                 )
                 .await;
-        },
+        }
         "stat" => {
             if !&env_data.web_stat_socket_addr.is_empty() && !&env_data.web_stat_addrs.is_empty() {
                 let now_str = get_now_str();
                 let web_stat_router = get_router(&env_data);
 
-                let web_stat_listener = tokio::net::TcpListener::bind(&env_data.web_stat_socket_addr)
-                    .await
-                    .expect(&format!(
-                        "[{now_str}] 🚫 Error on init listener for web_stat_server!"
-                    ));
+                let web_stat_listener =
+                    tokio::net::TcpListener::bind(&env_data.web_stat_socket_addr)
+                        .await
+                        .expect(&format!(
+                            "[{now_str}] 🚫 Error on init listener for web_stat_server!"
+                        ));
                 let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
                 println!("[{now_str}] ✅ - Web_stat_server prep OK.");
                 info!("✅ Web_stat_server prep OK.");
-                web_stat_serv.await;/*.expect(&format!(
-                    "[{now_str}] 🚫 Error on start web_stat_server!"
-                ))*/;
+                web_stat_serv.await; /*.expect(&format!(
+                                         "[{now_str}] 🚫 Error on start web_stat_server!"
+                                     ))*/
             } else {
                 let now_str = get_now_str();
                 println!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
                 error!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
                 process::exit(1);
             }
-        },
+        }
         _ => {
             let now_str = get_now_str();
             let service_file_name = env!("CARGO_PKG_NAME");
@@ -173,12 +174,14 @@ async fn main() {
             Command::new(service_full_path)
                 .args(["-s", "stat"])
                 .spawn()
-                .expect(&format!("[{now_str}] 🚫 - Failed to execute web_stat-service process!"));
+                .expect(&format!(
+                    "[{now_str}] 🚫 - Failed to execute web_stat-service process!"
+                ));
 
             let ctrlc = signal::ctrl_c().await;
             match ctrlc {
                 Ok(_) => println!("Kill all child processes. Bye! ⏻"),
-                Err(_err) => println!("Error on ctrl-c received! {}", _err)
+                Err(_err) => println!("Error on ctrl-c received! {}", _err),
             }
         }
     }

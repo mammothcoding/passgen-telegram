@@ -1,5 +1,7 @@
 pub mod web_stat {
-    use crate::engine::db_processing::db_processing::{get_data_for_statistics, set_web_state_token, web_state_token_existence_check};
+    use crate::engine::db_processing::db_processing::{
+        get_data_for_statistics, set_web_state_token, web_state_token_existence_check,
+    };
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::get_now_str;
     use crate::structs::user::user::User;
@@ -26,12 +28,12 @@ pub mod web_stat {
         ARRAY.get_or_init(|| Mutex::new(["", ""]))
     }
 
-    pub fn create_token(chat_id: i64, bot_id: i64) -> String {
+    pub async fn create_token(chat_id: i64, bot_id: i64) {
         let token = Passgen::new()
             .set_enabled_letters(true)
             .set_enabled_numbers(true)
             .generate(30);
-        set_web_state_token(chat_id, bot_id, &token.leak())
+        set_web_state_token(chat_id, bot_id, &token.leak()).await
     }
 
     pub struct WebStatTableCols {
@@ -54,12 +56,12 @@ pub mod web_stat {
     }
 
     #[derive(Serialize)]
+    #[allow(non_snake_case)]
     struct GithubBadgeJson {
         schemaVersion: u8,
         label: String,
         message: String,
         color: String,
-
     }
 
     impl IndexParams {
@@ -127,7 +129,7 @@ pub mod web_stat {
     ) -> Body {
         let mut body_stack = Vec::new();
 
-        if web_state_token_existence_check(&token[..]) {
+        if web_state_token_existence_check(&token[..]).await {
             let col_names = [
                 "created_at",
                 "updated_at",
@@ -344,7 +346,10 @@ pub mod web_stat {
     pub fn get_router(env: &DotEnv) -> Router {
         Router::new()
             .route("/favicon.ico", get(get_favicon))
-            .route("/total-user-count-of-bots", get(get_total_user_count_of_bots))
+            .route(
+                "/total-user-count-of-bots",
+                get(get_total_user_count_of_bots),
+            )
             .route("/{token}", get(web_stat_handler))
             .with_state(env.clone())
     }
