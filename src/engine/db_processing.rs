@@ -11,6 +11,7 @@ pub mod db_processing {
     use std::process;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
+    use crate::engine::glob_state::glob_state::get_bot_name;
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
@@ -146,12 +147,12 @@ pub mod db_processing {
         match res {
             Ok(_ok) => {
                 println!(
-                    "[{now_str}] 👤 - New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
-                    user.first_name, user.last_name, user.username, user.language_code
+                    "[{now_str}] 👤 - New user of {} reg #{chat_id} [{} {:?} {:?}  {:?}].",
+                    get_bot_name(), user.first_name, user.last_name, user.username, user.language_code
                 );
                 info!(
-                    "👤 New user reg #{chat_id} [{} {:?} {:?}  {:?}].",
-                    user.first_name, user.last_name, user.username, user.language_code
+                    "👤 New user of {} reg #{chat_id} [{} {:?} {:?}  {:?}].",
+                    get_bot_name(), user.first_name, user.last_name, user.username, user.language_code
                 );
                 true
             }
@@ -271,9 +272,8 @@ pub mod db_processing {
 
     pub async fn increase_user_gen_count(chat_id: i64, bot_id: i64, pwd_quantity: u64) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
-        let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE main SET gen_count = gen_count + ",
-        );
+        let mut q: QueryBuilder<Postgres> =
+            QueryBuilder::new("UPDATE main SET gen_count = gen_count + ");
         q.push_bind(pwd_quantity as i64);
         q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);

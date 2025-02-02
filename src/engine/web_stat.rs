@@ -1,7 +1,6 @@
 pub mod web_stat {
     use crate::engine::db_processing::db_processing::{
-        get_data_for_statistics, set_web_state_token,
-        web_state_token_existence_check,
+        get_data_for_statistics, set_web_state_token, web_state_token_existence_check,
     };
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::glob_state::glob_state::{
@@ -74,10 +73,9 @@ pub mod web_stat {
 
     pub async fn get_bots_users_count() -> impl IntoResponse {
         let users_count = glob_st_get_bots_users_count();
-        //let users_count: i32 = get_users_count().await;
         let badge_data = GithubBadgeJson {
             schemaVersion: 1,
-            label: "users".to_string(),
+            label: "tg_users".to_string(),
             message: users_count.to_string(),
             color: "lime".to_string(),
         };
@@ -89,10 +87,9 @@ pub mod web_stat {
 
     pub async fn get_bots_gen_pwds() -> impl IntoResponse {
         let passwords_count = glob_st_get_bots_gen_pwds();
-        //let passwords_count = get_total_pwds_sum().await;
         let badge_data = GithubBadgeJson {
             schemaVersion: 1,
-            label: "passwords".to_string(),
+            label: "gens_count".to_string(),
             message: passwords_count.to_string(),
             color: "coral".to_string(),
         };
@@ -185,6 +182,19 @@ pub mod web_stat {
             );
             body_stack.push("<body>".to_string());
             body_stack.push("<h2>Bots statistics:</h2>".to_string());
+
+            let users_count = glob_st_get_bots_users_count();
+            let passwords_count = glob_st_get_bots_gen_pwds();
+            body_stack.push(
+                [
+                    "<h3>total &#x1F464;: ".to_string(),
+                    users_count,
+                    ",  total &#x1F3B2;: ".to_string(),
+                    passwords_count,
+                    "</h3>".to_string(),
+                ]
+                .join(""),
+            );
 
             let db_data =
                 get_data_for_statistics(col_names.clone().join(","), index_params.clone()).await;

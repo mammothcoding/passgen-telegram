@@ -157,24 +157,8 @@ async fn main() {
                 let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
                 println!("[{now_str}] ✅ - Web_stat_server prep OK.");
                 info!("✅ Web_stat_server prep OK.");
-                /*let _ = web_stat_serv.await; *//*.expect(&format!(
-                    "[{now_str}] 🚫 Error on start web_stat_server!"
-                ))*/
 
-                /*async fn loope() {
-                    async fn loope2() -> Result<(), Box<dyn std::error::Error>> {
-                        let users_count: i32 = get_users_count().await;
-                        glob_st_set_bots_users_count(users_count);
-                        Ok(())
-                    }
-                    let my_duration = tokio::time::Duration::from_secs_f32(10f32);
-                    while let Ok(len) = timeout(my_duration, loope2().into_future()) {
-                        let now_str = get_now_str();
-                        println!("[{now_str}] ✅ - loope.");
-                    }
-                }*/
-
-                async fn loop_for_updating_statistical_glob_vars() {
+                async fn loop_for_updating_statistical_glob_vars(timeout: &u64) {
                     loop {
                         let users_count: i32 = get_users_count().await;
                         let passwords_count = get_total_pwds_sum().await;
@@ -183,13 +167,16 @@ async fn main() {
                         glob_st_set_bots_gen_pwds(passwords_count);
 
                         debug!("📗 Statistical global vars was updated.");
-                        tokio::time::sleep(Duration::from_secs(10)).await;
+                        tokio::time::sleep(Duration::from_secs(*timeout)).await;
                     }
                 }
 
                 let (_err1, _err2) = tokio::join!(
                     web_stat_serv.into_future(),
-                    loop_for_updating_statistical_glob_vars().into_future()
+                    loop_for_updating_statistical_glob_vars(
+                        &env_data.statistical_glob_vars_update_timeout
+                    )
+                    .into_future()
                 );
             } else {
                 let now_str = get_now_str();

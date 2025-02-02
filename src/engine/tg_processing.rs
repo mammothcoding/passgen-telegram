@@ -22,6 +22,7 @@ pub mod tg_processing {
     };
     use teloxide_core::Bot;
     use url::Url;
+    use crate::engine::glob_state::glob_state::get_bot_name;
 
     #[derive(BotCommands)]
     #[command(rename_rule = "lowercase")]
@@ -709,8 +710,8 @@ pub mod tg_processing {
                         )
                         .await?;
                     let now_str = get_now_str();
-                    println!("[{now_str}] 🎲 - New password for user #{chat_id_i64} was sent.");
-                    info!("🎲 New password for user #{chat_id_i64} was sent.");
+                    println!("[{now_str}] 🎲 - New password for user #{chat_id_i64} of {} was sent.", get_bot_name());
+                    info!("🎲 New password for user #{chat_id_i64} of {} was sent.", get_bot_name());
                     mess
                 } else {
                     let pwds: String = (1..=rules.pwd_quantity)
@@ -739,12 +740,12 @@ pub mod tg_processing {
                             .await?;
                         let now_str = get_now_str();
                         println!(
-                            "[{now_str}] 🎲🎲 - New {} passwords for user #{chat_id_i64} was sent.",
-                            rules.pwd_quantity
+                            "[{now_str}] 🎲🎲 - New {} passwords for user #{chat_id_i64} of {} was sent.",
+                            rules.pwd_quantity, get_bot_name()
                         );
                         info!(
-                            "🎲🎲 New {} passwords for user #{chat_id_i64} was sent.",
-                            rules.pwd_quantity
+                            "🎲🎲 New {} passwords for user #{chat_id_i64} of {} was sent.",
+                            rules.pwd_quantity, get_bot_name()
                         );
                         mess
                     } else {
@@ -764,7 +765,7 @@ pub mod tg_processing {
                                     .resize_keyboard(),
                             )
                             .await?;
-                        info!("⚠️🎲 User #{chat_id_i64} exceeded the length of the resulting message when generating it.");
+                        info!("⚠️🎲 User #{chat_id_i64} of {} exceeded the length of the resulting message when generating it.", get_bot_name());
                         mess
                     }
                 };

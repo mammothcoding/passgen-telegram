@@ -22,6 +22,7 @@ pub mod env_processing {
         pub web_stat_access_tg_user_ids: Vec<i64>,
         pub web_stat_addrs: Vec<[String; 2]>,
         pub web_stat_bots_usernames: HashMap<String, String>,
+        pub statistical_glob_vars_update_timeout: u64,
     }
 
     impl DotEnv {
@@ -37,6 +38,7 @@ pub mod env_processing {
             let default_webstat_socket_addr = Option::from("");
             let default_web_stat_access_tg_user_ids = Option::from("");
             let default_web_stat_addrs = Option::from("");
+            let default_statistical_glob_vars_update_timeout = Option::from("3600");
 
             let now_str = get_now_str();
             let cur_exe_binding = env::current_exe()
@@ -261,6 +263,22 @@ pub mod env_processing {
                     }
                 },
                 web_stat_bots_usernames,
+                statistical_glob_vars_update_timeout: {
+                    match get_env_var(
+                        "STATISTICAL_GLOB_VARS_UPDATE_TIMEOUT",
+                        &env_variables,
+                        default_statistical_glob_vars_update_timeout,
+                        &mut missing_keys,
+                    )
+                    .parse::<u64>()
+                    {
+                        Ok(secs) => secs,
+                        Err(_) => {
+                            missing_keys.push("LOG_FILES_COUNT");
+                            0
+                        }
+                    }
+                },
             };
 
             let now_str = get_now_str();
