@@ -5,6 +5,7 @@ mod engine {
     pub mod log;
     pub mod tg_processing;
     pub mod web_stat;
+    pub mod glob_state;
 }
 mod structs {
     pub mod rules;
@@ -30,6 +31,7 @@ use std::{env, process};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};
 use tokio::signal;
+use crate::engine::glob_state::glob_state::{get_bot_name, set_bot_name};
 
 #[derive(ClapParser, Debug)]
 #[command(
@@ -73,12 +75,12 @@ async fn main() {
 
     match service {
         "bot" => {
-            let bot_id = if !args.id.is_empty() {
-                args.id
+            let bot_id: String = if !args.id.is_empty() {
+                args.id.clone()
             } else {
                 let now_str = get_now_str();
                 println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
-                error!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                error!("🚫 - Could not start the bot service. The required bot id is not passed!");
                 process::exit(1);
             };
 
@@ -86,12 +88,19 @@ async fn main() {
             for identifier_arr in &env_data.tg_bots_identifiers {
                 if bot_id == identifier_arr[0].split(':').collect::<Vec<&str>>()[0].to_string() {
                     tg_bot_identifiers = identifier_arr.clone().into_iter().collect();
+
+                    match &env_data.web_stat_bots_usernames.get(&args.id[..]) {
+                        Some(val) => set_bot_name(&val[..].to_string()),
+                        _ => (),
+                    }
+                    let now_str = get_now_str();
+                    info!("Init bot_name is {}.", get_bot_name());
                 }
             }
             if tg_bot_identifiers.is_empty() {
                 let now_str = get_now_str();
                 println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
-                error!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+                error!("🚫 - Could not start the bot service. The required bot id is not passed!");
                 process::exit(1);
             }
 
@@ -144,13 +153,13 @@ async fn main() {
                 let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
                 println!("[{now_str}] ✅ - Web_stat_server prep OK.");
                 info!("✅ Web_stat_server prep OK.");
-                web_stat_serv.await; /*.expect(&format!(
+                let _ = web_stat_serv.await; /*.expect(&format!(
                                          "[{now_str}] 🚫 Error on start web_stat_server!"
                                      ))*/
             } else {
                 let now_str = get_now_str();
                 println!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
-                error!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
+                error!("🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
                 process::exit(1);
             }
         }

@@ -17,16 +17,7 @@ pub mod web_stat {
     use sqlx::types::Json;
     use sqlx::Row;
     use std::env;
-    use std::sync::{Mutex, OnceLock};
     use tokio_util::io::ReaderStream;
-
-    // [0] - total bots users count
-    // [1] - total bots generated passwords
-    pub fn web_state() -> &'static Mutex<[&'static str; 2]> {
-        //static VEC: OnceLock<Mutex<Vec(&'static str)>> = OnceLock::new();
-        static ARRAY: OnceLock<Mutex<[&'static str; 2]>> = OnceLock::new();
-        ARRAY.get_or_init(|| Mutex::new(["", ""]))
-    }
 
     pub async fn create_token(chat_id: i64, bot_id: i64) {
         let token = Passgen::new()
