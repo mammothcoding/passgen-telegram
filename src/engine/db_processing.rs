@@ -39,7 +39,7 @@ pub mod db_processing {
             .await;
         match check_or_create_db_res {
             Ok(_) => debug!(
-                "DB '{}' doesn't exist. Create new DB successfully.",
+                "DB '{}' doesn't exist. Create new DB is successfully.",
                 env_data.db_name
             ),
             Err(err) => {
@@ -104,7 +104,7 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Query check_user_rec_avail successfully completed: {:?}.",
+                    "📗 Query check_user_rec_avail is successfully completed: {:?}.",
                     _ok
                 );
                 true
@@ -213,7 +213,7 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Query get_last_mess_id successfully completed: {:?}.",
+                    "📗 Query get_last_mess_id is successfully completed: {:?}.",
                     _ok
                 );
                 _ok.get(0)
@@ -269,12 +269,13 @@ pub mod db_processing {
         }
     }
 
-    pub async fn increase_user_gen_count(chat_id: i64, bot_id: i64) {
+    pub async fn increase_user_gen_count(chat_id: i64, bot_id: i64, pwd_quantity: u64) {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> = QueryBuilder::new(
-            "UPDATE main SET gen_count = gen_count + 1, updated_at = current_timestamp",
+            "UPDATE main SET gen_count = gen_count + ",
         );
-        q.push(" WHERE chat_id = ");
+        q.push_bind(pwd_quantity as i64);
+        q.push(", updated_at = current_timestamp WHERE chat_id = ");
         q.push_bind(chat_id);
         q.push(" AND bot_id = ");
         q.push_bind(bot_id);
@@ -299,7 +300,7 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Get dialog context for user #{chat_id} successfully completed: {:?}.",
+                    "📗 Get dialog context for user #{chat_id} is successfully completed: {:?}.",
                     _ok
                 );
                 _ok.get(0)
@@ -348,7 +349,7 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Get app_lang for user #{chat_id} successfully completed: {:?}.",
+                    "📗 Get app_lang for user #{chat_id} is successfully completed: {:?}.",
                     &_ok
                 );
                 _ok.get(0)
@@ -401,7 +402,7 @@ pub mod db_processing {
                 let parse_to_user_data = serde_json::from_str::<user_data>(user_data_json);
                 match parse_to_user_data {
                     Ok(_ok) => {
-                        debug!("📗 Get User_data for user #{chat_id} is successfully.");
+                        debug!("📗 Get User_data for user #{chat_id} is successfully completed.");
                         Option::from(_ok)
                     }
                     Err(_err) => {
@@ -456,7 +457,7 @@ pub mod db_processing {
 
         match res.await {
             Ok(_ok) => {
-                debug!("📗 Execute get_data_for_statistics successfully completed.");
+                debug!("📗 Execute get_data_for_statistics is successfully completed.");
                 Option::from(_ok)
             }
             Err(_err) => {
@@ -469,17 +470,18 @@ pub mod db_processing {
     pub async fn web_state_token_existence_check(token: &str) -> bool {
         let pool = DB_POOL.get().expect("DB_POOL.get().expect");
         let mut q: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT id from web_stat WHERE token = ");
+            QueryBuilder::new("SELECT COUNT(id)::int from web_stat WHERE token = ");
         q.push_bind(token);
-        let res = q.build().execute(pool);
+        let res = q.build().fetch_one(pool).await;
 
-        match res.await {
+        match res {
             Ok(_ok) => {
+                let token_count: i32 = _ok.get(0);
                 debug!(
-                    "📗 Check token existence successfully completed: {:?}.",
-                    &_ok
+                    "📗 Check token existence is successfully completed: {:?}.",
+                    &token_count
                 );
-                if _ok.rows_affected() > 0 {
+                if token_count > 0 {
                     true
                 } else {
                     false
@@ -505,7 +507,7 @@ pub mod db_processing {
         match res.await {
             Ok(_ok) => {
                 debug!(
-                    "📗 Get token for user #{chat_id} on bot #{bot_id} successfully completed: {:?}.",
+                    "📗 Get token for user #{chat_id} on bot #{bot_id} is successfully completed: {:?}.",
                     &_ok
                 );
                 _ok.get(0)
@@ -541,6 +543,51 @@ pub mod db_processing {
                 error!(
                     "📕 Error on updating web_stat token for user #{chat_id} on bot #{bot_id}: '{_err}'."
                 );
+            }
+        }
+    }
+
+    pub async fn get_users_count() -> i32 {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        //let res: Result<i32, sqlx::Error> = sqlx::query_scalar("SELECT COUNT(id)::int from main").fetch_one(pool).await;
+        let res = QueryBuilder::new("SELECT COUNT(id)::int from main")
+            .build()
+            .fetch_one(pool)
+            .await;
+
+        match res {
+            Ok(_ok) => {
+                debug!(
+                    "📗 Get the summary users count of bots is successfully completed: {:?}.",
+                    &_ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                debug!("📕 Error on getting of the summary users count of bots: '{_err}'.");
+                -1
+            }
+        }
+    }
+
+    pub async fn get_total_pwds_sum() -> i32 {
+        let pool = DB_POOL.get().expect("DB_POOL.get().expect");
+        let res = QueryBuilder::new("SELECT SUM(gen_count)::int from main")
+            .build()
+            .fetch_one(pool)
+            .await;
+
+        match res {
+            Ok(_ok) => {
+                debug!(
+                    "📗 Get the total count of generated passwords by all bots is successfully completed: {:?}.",
+                    &_ok
+                );
+                _ok.get(0)
+            }
+            Err(_err) => {
+                debug!("📕 Error on getting of the total count of generated passwords by all bots: '{_err}'.");
+                -1
             }
         }
     }

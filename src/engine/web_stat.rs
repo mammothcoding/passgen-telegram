@@ -1,8 +1,13 @@
 pub mod web_stat {
     use crate::engine::db_processing::db_processing::{
-        get_data_for_statistics, set_web_state_token, web_state_token_existence_check,
+        get_data_for_statistics, set_web_state_token,
+        web_state_token_existence_check,
     };
     use crate::engine::env_processing::env_processing::DotEnv;
+    use crate::engine::glob_state::glob_state::{
+        get_bots_gen_pwds as glob_st_get_bots_gen_pwds,
+        get_bots_users_count as glob_st_get_bots_users_count,
+    };
     use crate::get_now_str;
     use crate::structs::user::user::User;
     use axum::body::Body;
@@ -67,14 +72,29 @@ pub mod web_stat {
         }
     }
 
-    pub async fn get_total_user_count_of_bots() -> impl IntoResponse {
-        let now_str = get_now_str();
-
+    pub async fn get_bots_users_count() -> impl IntoResponse {
+        let users_count = glob_st_get_bots_users_count();
+        //let users_count: i32 = get_users_count().await;
         let badge_data = GithubBadgeJson {
             schemaVersion: 1,
-            label: "total users".to_string(),
-            message: "111".to_string(),
-            color: "green".to_string(),
+            label: "users".to_string(),
+            message: users_count.to_string(),
+            color: "lime".to_string(),
+        };
+        let body = Json(badge_data).encode_to_string().unwrap();
+        let headers = [(header::CONTENT_TYPE, "application/json")];
+
+        (headers, body)
+    }
+
+    pub async fn get_bots_gen_pwds() -> impl IntoResponse {
+        let passwords_count = glob_st_get_bots_gen_pwds();
+        //let passwords_count = get_total_pwds_sum().await;
+        let badge_data = GithubBadgeJson {
+            schemaVersion: 1,
+            label: "passwords".to_string(),
+            message: passwords_count.to_string(),
+            color: "coral".to_string(),
         };
         let body = Json(badge_data).encode_to_string().unwrap();
         let headers = [(header::CONTENT_TYPE, "application/json")];
@@ -337,11 +357,9 @@ pub mod web_stat {
     pub fn get_router(env: &DotEnv) -> Router {
         Router::new()
             .route("/favicon.ico", get(get_favicon))
-            .route(
-                "/total-user-count-of-bots",
-                get(get_total_user_count_of_bots),
-            )
+            .route("/bots-users-count", get(get_bots_users_count))
+            .route("/total-count-generated-pwds", get(get_bots_gen_pwds))
             .route("/{token}", get(web_stat_handler))
             .with_state(env.clone())
-    }
+    } //
 }

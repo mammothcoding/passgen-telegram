@@ -1,19 +1,25 @@
 mod engine {
     pub mod db_processing;
     pub mod env_processing;
+    pub mod glob_state;
     pub mod lang_processing;
     pub mod log;
     pub mod tg_processing;
     pub mod web_stat;
-    pub mod glob_state;
 }
 mod structs {
     pub mod rules;
     pub mod user;
 }
 
-use crate::engine::db_processing::db_processing::init as db_pool_init;
+use crate::engine::db_processing::db_processing::{
+    get_total_pwds_sum, get_users_count, init as db_pool_init,
+};
 use crate::engine::env_processing::env_processing::DotEnv;
+use crate::engine::glob_state::glob_state::{
+    get_bot_name, set_bot_name, set_bots_gen_pwds as glob_st_set_bots_gen_pwds,
+    set_bots_users_count as glob_st_set_bots_users_count,
+};
 use crate::engine::log::log::init as log_init;
 use crate::engine::tg_processing::tg_processing::{
     callback_handler, message_handler, send_test_tg_mess,
@@ -23,15 +29,14 @@ use crate::structs::rules::rules::Rules;
 use ::log::info;
 use clap::{arg, Parser};
 use clap_derive::Parser as ClapParser;
-use futures::future::join_all;
-use log::error;
-use std::future::{Future, IntoFuture};
+use log::{debug, error};
+use std::future::IntoFuture;
 use std::process::Command;
+use std::time::Duration;
 use std::{env, process};
 use teloxide::Bot;
 use teloxide::{prelude::*, update_listeners::webhooks};
 use tokio::signal;
-use crate::engine::glob_state::glob_state::{get_bot_name, set_bot_name};
 
 #[derive(ClapParser, Debug)]
 #[command(
@@ -90,10 +95,9 @@ async fn main() {
                     tg_bot_identifiers = identifier_arr.clone().into_iter().collect();
 
                     match &env_data.web_stat_bots_usernames.get(&args.id[..]) {
-                        Some(val) => set_bot_name(&val[..].to_string()),
+                        Some(bot_name) => set_bot_name(&bot_name[..].to_string()),
                         _ => (),
                     }
-                    let now_str = get_now_str();
                     info!("Init bot_name is {}.", get_bot_name());
                 }
             }
@@ -153,9 +157,40 @@ async fn main() {
                 let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
                 println!("[{now_str}] ✅ - Web_stat_server prep OK.");
                 info!("✅ Web_stat_server prep OK.");
-                let _ = web_stat_serv.await; /*.expect(&format!(
-                                         "[{now_str}] 🚫 Error on start web_stat_server!"
-                                     ))*/
+                /*let _ = web_stat_serv.await; *//*.expect(&format!(
+                    "[{now_str}] 🚫 Error on start web_stat_server!"
+                ))*/
+
+                /*async fn loope() {
+                    async fn loope2() -> Result<(), Box<dyn std::error::Error>> {
+                        let users_count: i32 = get_users_count().await;
+                        glob_st_set_bots_users_count(users_count);
+                        Ok(())
+                    }
+                    let my_duration = tokio::time::Duration::from_secs_f32(10f32);
+                    while let Ok(len) = timeout(my_duration, loope2().into_future()) {
+                        let now_str = get_now_str();
+                        println!("[{now_str}] ✅ - loope.");
+                    }
+                }*/
+
+                async fn loop_for_updating_statistical_glob_vars() {
+                    loop {
+                        let users_count: i32 = get_users_count().await;
+                        let passwords_count = get_total_pwds_sum().await;
+
+                        glob_st_set_bots_users_count(users_count);
+                        glob_st_set_bots_gen_pwds(passwords_count);
+
+                        debug!("📗 Statistical global vars was updated.");
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+                    }
+                }
+
+                let (_err1, _err2) = tokio::join!(
+                    web_stat_serv.into_future(),
+                    loop_for_updating_statistical_glob_vars().into_future()
+                );
             } else {
                 let now_str = get_now_str();
                 println!("[{now_str}] 🚫 - Could not start the bots statistics web-service. The required .env keys are empty!");
