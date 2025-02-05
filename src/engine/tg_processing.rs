@@ -5,24 +5,25 @@ pub mod tg_processing {
         set_user_app_lang, set_user_dialog_context, update_rules,
     };
     use crate::engine::env_processing::env_processing::DotEnv;
+    use crate::engine::glob_state::glob_state::{get_bot_name, set_bot_name};
     use crate::engine::lang_processing::lang_processing::get_lang_map;
     use crate::engine::web_stat::web_stat::create_token;
-    use crate::get_now_str;
+    use crate::{get_now_str, Args};
     use crate::structs::rules::rules::Rules;
     use log::{debug, error, info, warn};
     use passgenlib::Passgen;
     use std::collections::HashMap;
     use std::error::Error;
+    use std::process;
+    use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
+    use teloxide::error_handlers::LoggingErrorHandler;
+    use teloxide::update_listeners::webhooks;
     use teloxide::utils::command::BotCommands;
     use teloxide_core::payloads::SendMessageSetters;
     use teloxide_core::prelude::{ChatId, Requester};
-    use teloxide_core::types::{
-        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup,
-        Me, Message, MessageId,
-    };
+    use teloxide_core::types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, Me, Message, MessageId, Update};
     use teloxide_core::Bot;
     use url::Url;
-    use crate::engine::glob_state::glob_state::get_bot_name;
 
     #[derive(BotCommands)]
     #[command(rename_rule = "lowercase")]
@@ -710,8 +711,14 @@ pub mod tg_processing {
                         )
                         .await?;
                     let now_str = get_now_str();
-                    println!("[{now_str}] 🎲 - New password for user #{chat_id_i64} of {} was sent.", get_bot_name());
-                    info!("🎲 New password for user #{chat_id_i64} of {} was sent.", get_bot_name());
+                    println!(
+                        "[{now_str}] 🎲 - New password for user #{chat_id_i64} of {} was sent.",
+                        get_bot_name()
+                    );
+                    info!(
+                        "🎲 New password for user #{chat_id_i64} of {} was sent.",
+                        get_bot_name()
+                    );
                     mess
                 } else {
                     let pwds: String = (1..=rules.pwd_quantity)
@@ -745,7 +752,8 @@ pub mod tg_processing {
                         );
                         info!(
                             "🎲🎲 New {} passwords for user #{chat_id_i64} of {} was sent.",
-                            rules.pwd_quantity, get_bot_name()
+                            rules.pwd_quantity,
+                            get_bot_name()
                         );
                         mess
                     } else {
@@ -891,5 +899,70 @@ pub mod tg_processing {
             .await;
             set_user_dialog_context(chat_id_i64, bot_id_i64, "NULL").await;
         }
+    }
+
+    pub async fn start_tgbot_service(env_data: DotEnv, args: Args) {
+        let bot_id: String = if !args.id.is_empty() {
+            args.id.clone()
+        } else {
+            let now_str = get_now_str();
+            println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+            error!("🚫 - Could not start the bot service. The required bot id is not passed!");
+            process::exit(1);
+        };
+
+        let mut tg_bot_identifiers: Vec<String> = Vec::new();
+        for identifier_arr in &env_data.tg_bots_identifiers {
+            if bot_id == identifier_arr[0].split(':').collect::<Vec<&str>>()[0].to_string() {
+                tg_bot_identifiers = identifier_arr.clone().into_iter().collect();
+
+                match &env_data.web_stat_bots_usernames.get(&args.id[..]) {
+                    Some(bot_name) => set_bot_name(&bot_name[..].to_string()),
+                    _ => (),
+                }
+                info!("Init bot_name is {}.", get_bot_name());
+            }
+        }
+        if tg_bot_identifiers.is_empty() {
+            let now_str = get_now_str();
+            println!("[{now_str}] 🚫 - Could not start the bot service. The required bot id is not passed!");
+            error!("🚫 - Could not start the bot service. The required bot id is not passed!");
+            process::exit(1);
+        }
+
+        // Setup teloxide listener.
+        let now_str = get_now_str();
+        let bot: Bot = Bot::new(&tg_bot_identifiers[0]);
+        let listener = webhooks::axum(
+            bot.clone(),
+            webhooks::Options::new(
+                (&tg_bot_identifiers[2]).parse().expect(&format!(
+                    "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
+                )),
+                (&tg_bot_identifiers[1]).parse().expect(&format!(
+                    "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
+                )),
+            ),
+        )
+            .await
+            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+
+        let telox_handler = dptree::entry()
+            .branch(Update::filter_message().endpoint(message_handler))
+            .branch(Update::filter_callback_query().endpoint(callback_handler));
+
+        send_test_tg_mess(&bot).await;
+
+        Dispatcher::builder(bot.clone(), telox_handler)
+            .dependencies(dptree::deps![env_data.clone()])
+            //.enable_ctrlc_handler()
+            .build()
+            .dispatch_with_listener(
+                listener,
+                LoggingErrorHandler::with_custom_text(&format!(
+                    "[{now_str}] 🚫 - An error from the update listener"
+                )),
+            )
+            .await;
     }
 }

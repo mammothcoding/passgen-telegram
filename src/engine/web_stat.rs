@@ -1,11 +1,14 @@
 pub mod web_stat {
     use crate::engine::db_processing::db_processing::{
-        get_data_for_statistics, set_web_state_token, web_state_token_existence_check,
+        get_data_for_statistics, get_total_pwds_sum, get_users_count, set_web_state_token,
+        web_state_token_existence_check,
     };
     use crate::engine::env_processing::env_processing::DotEnv;
     use crate::engine::glob_state::glob_state::{
         get_bots_gen_pwds as glob_st_get_bots_gen_pwds,
         get_bots_users_count as glob_st_get_bots_users_count,
+        set_bots_gen_pwds as glob_st_set_bots_gen_pwds,
+        set_bots_users_count as glob_st_set_bots_users_count,
     };
     use crate::get_now_str;
     use crate::structs::user::user::User;
@@ -16,11 +19,15 @@ pub mod web_stat {
     use axum::routing::get;
     use axum::Router;
     use chrono::DateTime;
+    use log::{debug, info};
     use passgenlib::Passgen;
     use serde::{Deserialize, Serialize};
     use sqlx::types::Json;
     use sqlx::Row;
     use std::env;
+    use std::future::IntoFuture;
+    use std::time::Duration;
+    use tokio::time::sleep;
     use tokio_util::io::ReaderStream;
 
     pub async fn create_token(chat_id: i64, bot_id: i64) {
@@ -371,5 +378,40 @@ pub mod web_stat {
             .route("/total-count-generated-pwds", get(get_bots_gen_pwds))
             .route("/{token}", get(web_stat_handler))
             .with_state(env.clone())
-    } //
+    }
+
+    async fn loop_for_updating_statistical_glob_vars(timeout: &u64) {
+        loop {
+            let users_count: i32 = get_users_count().await;
+            let passwords_count = get_total_pwds_sum().await;
+
+            glob_st_set_bots_users_count(users_count);
+            glob_st_set_bots_gen_pwds(passwords_count);
+
+            debug!("📗 Statistical global vars was updated.");
+            sleep(Duration::from_secs(*timeout)).await;
+        }
+    }
+
+    pub async fn start_stat_service(env_data: DotEnv) {
+        let now_str = get_now_str();
+        let web_stat_router = get_router(&env_data);
+
+        let web_stat_listener = tokio::net::TcpListener::bind(&env_data.web_stat_socket_addr)
+            .await
+            .expect(&format!(
+                "[{now_str}] 🚫 Error on init listener for web_stat_server!"
+            ));
+
+        println!("[{now_str}] ✅ - Web_stat_server prep OK.");
+        info!("✅ Web_stat_server prep OK.");
+
+        let web_stat_serv = axum::serve(web_stat_listener, web_stat_router);
+
+        let (_er1, _er2) = tokio::join!(
+            web_stat_serv.into_future(),
+            loop_for_updating_statistical_glob_vars(&env_data.statistical_glob_vars_update_timeout)
+                .into_future()
+        );
+    }
 }

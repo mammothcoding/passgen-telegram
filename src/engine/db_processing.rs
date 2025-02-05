@@ -1,5 +1,6 @@
 pub mod db_processing {
     use crate::engine::env_processing::env_processing::DotEnv;
+    use crate::engine::glob_state::glob_state::get_bot_name;
     use crate::engine::lang_processing::lang_processing::obtain_user_lang_code;
     use crate::engine::web_stat::web_stat::IndexParams;
     use crate::structs::user::user::User as user_data;
@@ -11,7 +12,6 @@ pub mod db_processing {
     use std::process;
     use teloxide_core::types::User;
     use tokio::sync::OnceCell;
-    use crate::engine::glob_state::glob_state::get_bot_name;
 
     static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::const_new();
 
@@ -148,11 +148,19 @@ pub mod db_processing {
             Ok(_ok) => {
                 println!(
                     "[{now_str}] 👤 - New user of {} reg #{chat_id} [{} {:?} {:?}  {:?}].",
-                    get_bot_name(), user.first_name, user.last_name, user.username, user.language_code
+                    get_bot_name(),
+                    user.first_name,
+                    user.last_name,
+                    user.username,
+                    user.language_code
                 );
                 info!(
                     "👤 New user of {} reg #{chat_id} [{} {:?} {:?}  {:?}].",
-                    get_bot_name(), user.first_name, user.last_name, user.username, user.language_code
+                    get_bot_name(),
+                    user.first_name,
+                    user.last_name,
+                    user.username,
+                    user.language_code
                 );
                 true
             }
