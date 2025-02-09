@@ -8,8 +8,8 @@ pub mod tg_processing {
     use crate::engine::glob_state::glob_state::{get_bot_name, set_bot_name};
     use crate::engine::lang_processing::lang_processing::get_lang_map;
     use crate::engine::web_stat::web_stat::create_token;
-    use crate::{get_now_str, Args};
     use crate::structs::rules::rules::Rules;
+    use crate::{get_now_str, Args};
     use log::{debug, error, info, warn};
     use passgenlib::Passgen;
     use std::collections::HashMap;
@@ -21,7 +21,10 @@ pub mod tg_processing {
     use teloxide::utils::command::BotCommands;
     use teloxide_core::payloads::SendMessageSetters;
     use teloxide_core::prelude::{ChatId, Requester};
-    use teloxide_core::types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, Me, Message, MessageId, Update};
+    use teloxide_core::types::{
+        CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup,
+        Me, Message, MessageId, Update,
+    };
     use teloxide_core::Bot;
     use url::Url;
 
@@ -944,8 +947,8 @@ pub mod tg_processing {
                 )),
             ),
         )
-            .await
-            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+        .await
+        .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
 
         let telox_handler = dptree::entry()
             .branch(Update::filter_message().endpoint(message_handler))
