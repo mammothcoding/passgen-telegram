@@ -15,6 +15,10 @@ Readme in different languages:
 # 📲 Passgen-telegram
 Telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
 
+Name of the working bot: @easy_passgen_bot
+
+Link to the working bot: [@easy_passgen_bot](https://web.telegram.org/a/#7745281341)
+
 ![alt text](./pics/passgen-telegram_demo.gif "passgen-telegram_demo.gif")
 
 The service can serve multiple generator bots with corresponding telegram tokens, names, etc.

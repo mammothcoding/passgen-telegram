@@ -30,7 +30,8 @@ The allowed message length for Telegram has been exceeded!"),
     A telegram bot-service for generating cryptographically secure passwords/tokens and other sets and sequences.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng and Hc128Rng are used.</i>
 <i>🦀 Made with Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Project github page</a></u> (temporary private)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Project github page</a></u> (please ⭐ the project)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Homepage</a></u></i>
 
     <u><b>Usage:</b></u>
 🔹 You can choose interface language.
@@ -77,7 +78,8 @@ Intenta reducir el número de contraseñas o su longitud.
     Un servicio bot de telegramas para generar contraseñas/tokens criptográficamente seguros y otros conjuntos y secuencias.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Se utilizan Isaac64Rng y Hc128Rng.</i>
 <i>🦀 Fabricado con Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página del proyecto en github</a></u> (privado temporal)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página del proyecto en github</a></u> (por favor, ⭐ el proyecto)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Página de inicio</a></u></i>
 
     <u><b>Utilización:</b></u>
 🔹 Puedes elegir el idioma de la interfaz.
@@ -124,7 +126,8 @@ Comprimento da mensagem excedido para o Telegram!"),
     Um serviço de bot de telegramas para gerar palavras-passe/tokens criptograficamente seguros e outros conjuntos e sequências.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> São utilizados Isaac64Rng e Hc128Rng.</i>
 <i>🦀 Fabricado com Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página do projeto no github</a></u> (privado temporário)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Página do projeto no github</a></u> (por favor, ⭐ o projeto)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Página inicial</a></u></i>
 
     <u><b>Utilização:</b></u>
 🔹 Pode escolher o idioma da interface.
@@ -171,7 +174,8 @@ Longueur du message dépassée pour Telegram !"),
     Un service de télégrammes pour générer des mots de passe/tokens et d'autres ensembles et séquences cryptographiquement sécurisés.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng et Hc128Rng sont utilisés.</i>
 <i>🦀 Fabriqué avec de la Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Page github du projet</a></u> (temporaire privé)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Page github du projet</a></u> (veuillez ⭐ le projet)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Page d'accueil</a></u></i>
 
     <u><b>Utilisation:</b></u>
 🔹 Vous pouvez choisir la langue de l'interface.
@@ -218,7 +222,8 @@ Nachrichtenlänge für Telegram überschritten!"),
     Ein Telegramm-Botdienst zur Erzeugung von kryptographisch sicheren Passwörtern/Tokens und anderen Mengen und Sequenzen.
 <i><a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng und Hc128Rng werden verwendet.</i>
 <i>🦀 Hergestellt mit Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Projekt github Seite</a></u> (vorübergehend privat)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Projekt github Seite</a></u> (Bitte ⭐ bewerten Sie das Projekt)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Homepage</a></u></i>
 
     <u><b>Verwendung:</b></u>
 🔹 Sie können die Sprache der Schnittstelle wählen.
@@ -265,7 +270,8 @@ Ausgenommen mehrdeutige Zeichen <i>\"0oOiIlL1\"</i>.
     Телеграм-бот-сервис для создания криптографически защищенных паролей/токенов и других наборов и последовательностей.
 <i>В генераторе используются <a href=\"https://rust-random.github.io/book/guide-rngs.html#cryptographically-secure-pseudo-random-number-generators-csprngs\">CSPRNGs</a> Isaac64Rng and Hc128Rng.</i>
 <i>🦀 Создано на языке Rust.</i>
-<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Гитхаб проекта</a></u> (временно приватный)</i>
+<i>🔗 <u><a href=\"https://github.com/mammothcoding/passgen-telegram\">Гитхаб проекта</a></u> (пожалуйста ⭐ проект)</i>
+<i>🔗 <u><a href=\"https://passgen.mamont.xyz\">Домашняя страница</a></u></i>
 
     <u><b>Использование:</b></u>
 🔹 Вы можете выбрать язык интерфейса.
