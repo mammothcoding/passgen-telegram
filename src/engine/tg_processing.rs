@@ -12,13 +12,16 @@ pub mod tg_processing {
     use crate::{get_now_str, Args};
     use log::{debug, error, info, warn};
     use passgenlib::Passgen;
+    use reqwest::Proxy;
     use std::collections::HashMap;
     use std::error::Error;
     use std::process;
+    use std::time::Duration;
     use teloxide::dispatching::{Dispatcher, UpdateFilterExt};
     use teloxide::error_handlers::LoggingErrorHandler;
-    use teloxide::update_listeners::webhooks;
+    use teloxide::update_listeners::{webhooks, Polling};
     use teloxide::utils::command::BotCommands;
+    use teloxide_core::net;
     use teloxide_core::payloads::SendMessageSetters;
     use teloxide_core::prelude::{ChatId, Requester};
     use teloxide_core::types::{
@@ -50,6 +53,37 @@ pub mod tg_processing {
                 );
                 error!("🚫 Error during startup testing of TG bot: {}", err);
             }
+        }
+    }
+
+    fn build_tg_bot(env_data: &DotEnv, token: &str) -> Bot {
+        if let Some(proxy_url) = env_data.tg_proxy_url() {
+            let now_str = get_now_str();
+            println!(
+                "[{now_str}] ✅ - TG bot will use long polling through proxy: {}",
+                proxy_url
+            );
+            info!(
+                "✅ TG bot will use long polling through proxy: {}",
+                proxy_url
+            );
+
+            let proxy = Proxy::all(&proxy_url).expect(&format!(
+                "[{now_str}] 🚫 - Incorrect TG proxy URL settings!"
+            ));
+            let client = net::default_reqwest_settings()
+                .proxy(proxy)
+                .build()
+                .expect(&format!(
+                    "[{now_str}] 🚫 - Could not create TG client with proxy!"
+                ));
+
+            Bot::with_client(token, client)
+        } else {
+            let now_str = get_now_str();
+            println!("[{now_str}] ✅ - TG bot will use webhook mode.");
+            info!("✅ TG bot will use webhook mode.");
+            Bot::new(token)
         }
     }
 
@@ -935,20 +969,7 @@ pub mod tg_processing {
 
         // Setup teloxide listener.
         let now_str = get_now_str();
-        let bot: Bot = Bot::new(&tg_bot_identifiers[0]);
-        let listener = webhooks::axum(
-            bot.clone(),
-            webhooks::Options::new(
-                (&tg_bot_identifiers[2]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
-                )),
-                (&tg_bot_identifiers[1]).parse().expect(&format!(
-                    "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
-                )),
-            ),
-        )
-        .await
-        .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+        let bot: Bot = build_tg_bot(&env_data, &tg_bot_identifiers[0]);
 
         let telox_handler = dptree::entry()
             .branch(Update::filter_message().endpoint(message_handler))
@@ -956,16 +977,48 @@ pub mod tg_processing {
 
         send_test_tg_mess(&bot).await;
 
-        Dispatcher::builder(bot.clone(), telox_handler)
-            .dependencies(dptree::deps![env_data.clone()])
-            //.enable_ctrlc_handler()
-            .build()
-            .dispatch_with_listener(
-                listener,
-                LoggingErrorHandler::with_custom_text(&format!(
-                    "[{now_str}] 🚫 - An error from the update listener"
-                )),
+        if env_data.is_tg_proxy_enabled() {
+            let listener = Polling::builder(bot.clone())
+                .timeout(Duration::from_secs(10))
+                .delete_webhook()
+                .await
+                .build();
+
+            Dispatcher::builder(bot.clone(), telox_handler)
+                .dependencies(dptree::deps![env_data.clone()])
+                .build()
+                .dispatch_with_listener(
+                    listener,
+                    LoggingErrorHandler::with_custom_text(&format!(
+                        "[{now_str}] 🚫 - An error from the long polling listener"
+                    )),
+                )
+                .await;
+        } else {
+            let listener = webhooks::axum(
+                bot.clone(),
+                webhooks::Options::new(
+                    (&tg_bot_identifiers[2]).parse().expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_BOT_SOCKET_ADDR in the .env file!"
+                    )),
+                    (&tg_bot_identifiers[1]).parse().expect(&format!(
+                        "[{now_str}] 🚫 - Incorrect TELEGRAM_WEBHOOK_URL in the .env file!"
+                    )),
+                ),
             )
-            .await;
+            .await
+            .expect(&format!("[{now_str}] 🚫 - Couldn't setup webhook"));
+
+            Dispatcher::builder(bot.clone(), telox_handler)
+                .dependencies(dptree::deps![env_data.clone()])
+                .build()
+                .dispatch_with_listener(
+                    listener,
+                    LoggingErrorHandler::with_custom_text(&format!(
+                        "[{now_str}] 🚫 - An error from the update listener"
+                    )),
+                )
+                .await;
+        }
     }
 }

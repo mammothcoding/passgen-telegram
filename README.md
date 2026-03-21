@@ -35,6 +35,8 @@ The main service configuration settings must be in the same directory as the ser
 ### Env
 Work with .env files is implemented using the ["env-file-reader"](https://github.com/jofas/env_file_reader) library.
 An example .env file in the ["examples"](./examples/) directory of this repository.
+If `TG_PROXY_ADDR` is empty, bots run in webhook mode as before.
+If `TG_PROXY_ADDR` and `TG_PROXY_PORT` are set, bots switch to long polling and use the configured HTTP proxy for Telegram Bot API requests.
 
 ### Passgen
 Passwords are generated with the help of our own library ["passgen-lib"](https://github.com/mammothcoding/passgen-lib).

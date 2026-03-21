@@ -8,6 +8,8 @@ pub mod env_processing {
     #[derive(Clone)]
     pub struct DotEnv {
         pub tg_bots_identifiers: Vec<[String; 3]>,
+        pub tg_proxy_addr: String,
+        pub tg_proxy_port: u16,
         pub db_host: String,
         pub db_port: u32,
         pub db_name: String,
@@ -26,8 +28,25 @@ pub mod env_processing {
     }
 
     impl DotEnv {
+        pub fn is_tg_proxy_enabled(&self) -> bool {
+            !self.tg_proxy_addr.is_empty()
+        }
+
+        pub fn tg_proxy_url(&self) -> Option<String> {
+            if self.is_tg_proxy_enabled() {
+                Some(format!(
+                    "http://{}:{}",
+                    self.tg_proxy_addr, self.tg_proxy_port
+                ))
+            } else {
+                None
+            }
+        }
+
         // Obtain variables from ".env" file stored near binary file.
         pub fn parse_dot_env() -> DotEnv {
+            let default_tg_proxy_addr = Option::from("");
+            let default_tg_proxy_port = Option::from("");
             let default_db_port = Option::from("5432");
             let default_db_name = Option::from("tg_passgen_db");
             let default_log_stderr_lvl = Option::from("off");
@@ -85,6 +104,34 @@ pub mod env_processing {
                 }
             }
 
+            let tg_proxy_addr = get_env_var(
+                "TG_PROXY_ADDR",
+                &env_variables,
+                default_tg_proxy_addr,
+                &mut missing_keys,
+            );
+            let tg_proxy_enabled = !tg_proxy_addr.is_empty();
+            let tg_proxy_port = {
+                let from_env = get_env_var(
+                    "TG_PROXY_PORT",
+                    &env_variables,
+                    default_tg_proxy_port,
+                    &mut missing_keys,
+                );
+
+                if tg_proxy_addr.is_empty() {
+                    0
+                } else {
+                    match from_env.parse::<u16>() {
+                        Ok(port) if port != 0 => port,
+                        _ => {
+                            missing_keys.push("TG_PROXY_PORT");
+                            0
+                        }
+                    }
+                }
+            };
+
             let res = DotEnv {
                 tg_bots_identifiers: {
                     let mut res_identifiers: Vec<[String; 3]> = Vec::new();
@@ -104,9 +151,9 @@ pub mod env_processing {
                                 .collect::<Vec<&str>>();
                             if identifier.len() == 4
                                 && !identifier[0].is_empty()
-                                && !identifier[1].is_empty()
-                                && !identifier[2].is_empty()
                                 && !identifier[3].is_empty()
+                                && (tg_proxy_enabled
+                                    || (!identifier[1].is_empty() && !identifier[2].is_empty()))
                             {
                                 res_identifiers.push([
                                     identifier[0].to_string(),
@@ -128,6 +175,8 @@ pub mod env_processing {
                     }
                     res_identifiers
                 },
+                tg_proxy_addr,
+                tg_proxy_port,
                 db_host: get_env_var("DB_HOST", &env_variables, None, &mut missing_keys),
                 db_port: {
                     match get_env_var(

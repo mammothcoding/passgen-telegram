@@ -18,7 +18,7 @@ use crate::engine::log::log::init as log_init;
 use crate::engine::tg_processing::tg_processing::start_tgbot_service;
 use crate::engine::web_stat::web_stat::start_stat_service;
 use crate::structs::rules::rules::Rules;
-use clap::{arg, Parser};
+use clap::Parser;
 use clap_derive::Parser as ClapParser;
 use log::error;
 use std::process::Command;

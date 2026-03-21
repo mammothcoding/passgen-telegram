@@ -35,6 +35,8 @@ Readme на разных языках:
 ### Env
 Работа с .env файлами реализована с использованием библиотеки ["env-file-reader"](https://github.com/jofas/env_file_reader).
 Пример файла .env в каталоге ["examples"](./examples/) этого репозитория.
+Если `TG_PROXY_ADDR` пуст, боты работают в прежнем режиме через webhook.
+Если заданы `TG_PROXY_ADDR` и `TG_PROXY_PORT`, боты переключаются на long polling и используют указанный HTTP-прокси для запросов к Telegram Bot API.
 
 ### Passgen
 Для генерирования паролей используется собственная библиотека ["passgen-lib"](https://github.com/mammothcoding/passgen-lib).
