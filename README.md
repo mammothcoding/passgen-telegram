@@ -5,8 +5,8 @@
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://choosealicense.com/licenses/mit/)
 [![Build Status](https://github.com/mammothcoding/passgen-telegram/actions/workflows/rust.yml/badge.svg?event=push)](https://github.com/mammothcoding/passgen-telegram/actions/workflows/rust.yml)
 [![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
-![Endpoint Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fstat.tg.passgen.mamont.xyz%2Fbots-users-count)
-![Endpoint Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fstat.tg.passgen.mamont.xyz%2Ftotal-count-generated-pwds)
+![Endpoint Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fstat.tg.passgen.mtcoding.com%2Fbots-users-count)
+![Endpoint Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fstat.tg.passgen.mtcoding.com%2Ftotal-count-generated-pwds)
 
 Readme in different languages:
 [EN](https://github.com/mammothcoding/passgen-telegram/blob/master/README.md)
